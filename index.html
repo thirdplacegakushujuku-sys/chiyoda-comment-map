@@ -2,11 +2,10 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <!-- スマホでアプリっぽく見せるためのビューポート設定 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>千代田区コメントマップ</title>
     
-    <!-- ★ PWA用の設定 (ここを追加) ★ -->
+    <!-- PWA設定 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007bff">
     <link rel="apple-touch-icon" href="icon.png">
@@ -36,6 +35,22 @@
             box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: left 0.3s ease;
         }
         #sidebar.hidden + #mapid #sidebar-toggle { left: 10px; background-color: #007bff; color: white; }
+        
+        /* ログインエリア */
+        #login-section {
+            padding: 15px; background-color: #fff; border-bottom: 1px solid #ddd;
+            display: flex; flex-direction: column; align-items: center; gap: 10px;
+        }
+        #user-info { display: none; align-items: center; gap: 10px; width: 100%; }
+        #user-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #ddd;}
+        #user-name { font-weight: bold; font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        
+        .auth-btn {
+            width: 100%; padding: 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 14px;
+        }
+        .btn-login { background-color: #4285f4; color: white; } /* Google Blue */
+        .btn-logout { background-color: #eee; color: #333; width: auto; font-size: 12px; padding: 5px 10px;}
+
         #sidebar-content { flex: 1; overflow-y: auto; padding: 20px; }
         #hashtag-section {
             padding: 15px 20px; background-color: #fff; border-top: 1px solid #ddd;
@@ -60,20 +75,31 @@
         #comment-list { list-style: none; padding: 0; margin: 0; }
         .comment-item {
             background-color: #fff; padding: 15px; margin-bottom: 15px; border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #007bff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #ccc; /* 未ログイン投稿はグレー */
             position: relative; transition: 0.2s; cursor: pointer;
         }
-        .comment-item:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); background-color: #f0f8ff; }
+        .comment-item.my-post { border-left-color: #007bff; background-color: #f9fcff; } /* 自分の投稿 */
+        
+        .comment-item:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         .comment-item.active { border-left-color: #ff4081; background-color: #fff0f5; }
-        .comment-header { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px; color: #666; }
+        
+        .comment-header { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; color: #666; gap: 8px; }
+        .author-icon { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
+        .author-name { font-weight: bold; color: #333; margin-right: auto; }
+        .post-time { font-size: 11px; }
+
         .comment-text { display: block; margin-bottom: 5px; font-size: 14px; line-height: 1.5; pointer-events: none; }
         .hashtag { color: #007bff; background: #eef6ff; padding: 2px 5px; border-radius: 4px; font-weight: bold; margin-right: 2px; }
         .comment-actions { display: flex; align-items: center; border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px; }
         
         .like-btn { background: none; border: 1px solid #ff4081; color: #ff4081; border-radius: 20px; padding: 3px 10px; font-size: 12px; cursor: pointer; transition: 0.2s; z-index: 2; }
         .like-btn:hover, .like-btn.liked { background-color: #ff4081; color: white; }
-        .delete-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; z-index: 2; }
+        
+        /* 削除ボタン */
+        .delete-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: #ccc; font-size: 18px; cursor: pointer; z-index: 2; display: none; }
         .delete-btn:hover { color: #ff4444; }
+        /* 自分の投稿にだけ削除ボタンを表示するクラス */
+        .my-post .delete-btn { display: block; }
 
         .popular-tag { display: inline-block; background-color: #eef6ff; color: #007bff; border-radius: 20px; padding: 5px 10px; margin: 0 5px 5px 0; font-size: 12px; font-weight: bold; border: 1px solid #b3d7ff; }
         .popular-tag-count { background-color: #007bff; color: white; border-radius: 50%; padding: 0 5px; margin-left: 5px; font-size: 10px; }
@@ -93,18 +119,33 @@
             border-width: 8px 8px 0; border-style: solid; border-color: #333 transparent transparent transparent;
         }
         .custom-pin-dot { width: 12px; height: 12px; background-color: #007bff; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
+        .pin-user-icon { width: 16px; height: 16px; border-radius: 50%; object-fit: cover; margin-right: 3px; }
 
         /* フォーム */
         .comment-form { text-align: center; width: 220px; }
         .comment-input { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         .file-input { width: 100%; margin-bottom: 10px; font-size: 12px; }
         .comment-btn { width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .comment-btn:disabled { background: #ccc; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
     <div id="container">
         <div id="sidebar">
+            <!-- ログインエリア -->
+            <div id="login-section">
+                <!-- 未ログイン時 -->
+                <button id="login-btn" class="auth-btn btn-login">Googleでログイン</button>
+                
+                <!-- ログイン時 -->
+                <div id="user-info">
+                    <img id="user-icon" src="" alt="icon">
+                    <span id="user-name"></span>
+                    <button id="logout-btn" class="auth-btn btn-logout">ログアウト</button>
+                </div>
+            </div>
+
             <div id="sidebar-content">
                 <h2>📍 みんなの投稿</h2>
                 <ul id="comment-list">
@@ -125,16 +166,17 @@
         </div>
     </div>
 
-    <!-- Firebaseライブラリ -->
+    <!-- Firebaseライブラリ (Authを追加) -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 
     <script>
         // =========================================================
-        // 🔥 重要: 自分の firebaseConfig に書き換えてください
+        // 🔥 重要: 他の設定(projectId等)も必ず書き換えてください！
         // =========================================================
         const firebaseConfig = {
-            apiKey: "AIzaSyCZxC2imSus21qmrN4OelItvq9pyGJm0sE",
+            apiKey: "AIzaSyCZxC2imSus21qmrN4OelItvq9pyGJm0sE", // ←更新しました
             authDomain: "projectId.firebaseapp.com",
             projectId: "your-project-id",
             storageBucket: "your-project-id.appspot.com",
@@ -143,137 +185,180 @@
         };
         // =========================================================
 
-        // Firebase初期化
         try {
             firebase.initializeApp(firebaseConfig);
         } catch(e) {
-            console.error("Firebase初期化エラー: 設定値を確認してください", e);
+            console.error("Firebase初期化エラー", e);
         }
         const db = firebase.firestore();
-
+        const auth = firebase.auth();
+        const provider = new firebase.auth.GoogleAuthProvider();
 
         window.onload = function() {
             if (typeof L === 'undefined') { alert('地図エラー'); return; }
 
-            // ★ PWA: Service Workerの登録 (ここを追加) ★
+            // PWA登録
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('./service-worker.js')
-                .then(function(registration) {
-                    console.log('Service Worker 登録成功:', registration);
-                })
-                .catch(function(error) {
-                    console.log('Service Worker 登録失敗:', error);
-                });
+                navigator.serviceWorker.register('./service-worker.js').catch(e => console.log('SW失敗:', e));
             }
 
-            // 地図の初期化
+            // 地図初期化
             var center = [35.685175, 139.752762];
             var map = L.map('mapid', { zoomControl: false }).setView(center, 14);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19, attribution: '© OpenStreetMap contributors', className: 'grayscale-tile'
+                maxZoom: 19, attribution: '© OpenStreetMap', className: 'grayscale-tile'
             }).addTo(map);
 
-            // マスク
             var worldLatLngs = [[90, -180], [90, 180], [-90, 180], [-90, -180]];
             var chiyodaHole = [[35.706, 139.728], [35.706, 139.784], [35.668, 139.784], [35.668, 139.728]];
             L.polygon([worldLatLngs, chiyodaHole], { color: 'transparent', fillColor: '#000', fillOpacity: 0.6, interactive: false }).addTo(map);
 
-            var markersMap = {}; 
+            // 状態管理
+            var markersMap = {};
             var hashtagStats = {};
             var topZIndex = 1000;
             var currentLocationMarker = null;
+            var currentUser = null; // ログインユーザー情報
+            var unsubscribe = null; // リスナー解除用
 
-            // --- Firebase 読み込み ---
-            db.collection("posts").orderBy("date", "desc").onSnapshot((snapshot) => {
-                var loadingMsg = document.getElementById('loading-msg');
-                if(loadingMsg) loadingMsg.style.display = 'none';
-                
-                var list = document.getElementById('comment-list');
-                list.innerHTML = "";
-                hashtagStats = {}; 
-
-                snapshot.forEach((doc) => {
-                    var data = doc.data();
-                    var docId = doc.id; 
-
-                    var tags = data.text.match(/(#\S+)/g);
-                    if(tags) tags.forEach(t => { hashtagStats[t] = (hashtagStats[t] || 0) + 1; });
-
-                    if (!markersMap[docId]) {
-                        var styledText = formatTextWithHashtags(data.text);
-                        var customIcon = createCustomIcon(docId, styledText, data.likeCount, data.image);
-                        var marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
-                        markersMap[docId] = marker;
-                    } else {
-                        var marker = markersMap[docId];
-                        var styledText = formatTextWithHashtags(data.text);
-                        var newIcon = createCustomIcon(docId, styledText, data.likeCount, data.image);
-                        marker.setIcon(newIcon);
-                    }
-                    addSidebarItem(docId, data, markersMap[docId]);
+            // --------------------------------------------------------
+            // 🔐 ログイン・ログアウト処理
+            // --------------------------------------------------------
+            document.getElementById('login-btn').onclick = function() {
+                auth.signInWithPopup(provider).catch(function(error) {
+                    alert("ログイン失敗: " + error.message);
                 });
-                renderPopularHashtags();
-            }, (error) => {
-                console.error("読み込みエラー:", error);
+            };
+
+            document.getElementById('logout-btn').onclick = function() {
+                auth.signOut().then(() => {
+                    alert("ログアウトしました");
+                });
+            };
+
+            // ログイン状態の監視
+            auth.onAuthStateChanged(function(user) {
+                currentUser = user; // 状態を保存
+                updateLoginUI(user);
+                
+                // ログイン状態が変わったらデータを再読み込み（削除ボタンの表示などを更新するため）
+                setupDataListener();
             });
 
-            // --- 投稿処理 ---
+            function updateLoginUI(user) {
+                if (user) {
+                    document.getElementById('login-btn').style.display = 'none';
+                    document.getElementById('user-info').style.display = 'flex';
+                    document.getElementById('user-icon').src = user.photoURL;
+                    document.getElementById('user-name').textContent = user.displayName;
+                } else {
+                    document.getElementById('login-btn').style.display = 'block';
+                    document.getElementById('user-info').style.display = 'none';
+                }
+            }
+
+            // --------------------------------------------------------
+            // 🔥 データ読み込み (再利用可能な関数)
+            // --------------------------------------------------------
+            function setupDataListener() {
+                // 既に監視中なら一度解除
+                if(unsubscribe) unsubscribe();
+
+                unsubscribe = db.collection("posts").orderBy("date", "desc").onSnapshot((snapshot) => {
+                    document.getElementById('loading-msg').style.display = 'none';
+                    var list = document.getElementById('comment-list');
+                    list.innerHTML = "";
+                    hashtagStats = {}; 
+
+                    snapshot.forEach((doc) => {
+                        var data = doc.data();
+                        var docId = doc.id; 
+                        
+                        // ハッシュタグ集計
+                        var tags = data.text.match(/(#\S+)/g);
+                        if(tags) tags.forEach(t => { hashtagStats[t] = (hashtagStats[t] || 0) + 1; });
+
+                        // マーカー更新
+                        if (!markersMap[docId]) {
+                            var styledText = formatTextWithHashtags(data.text);
+                            var customIcon = createCustomIcon(docId, styledText, data.likeCount, data.image, data.authorPhoto);
+                            var marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
+                            markersMap[docId] = marker;
+                        } else {
+                            var marker = markersMap[docId];
+                            var styledText = formatTextWithHashtags(data.text);
+                            var newIcon = createCustomIcon(docId, styledText, data.likeCount, data.image, data.authorPhoto);
+                            marker.setIcon(newIcon);
+                        }
+                        
+                        // リスト追加
+                        addSidebarItem(docId, data, markersMap[docId]);
+                    });
+                    renderPopularHashtags();
+                });
+            }
+
+            // --------------------------------------------------------
+            // 🖱️ 投稿機能
+            // --------------------------------------------------------
             map.on('click', function(e) {
                 if(e.originalEvent.target.id === 'gps-btn' || e.originalEvent.target.id === 'sidebar-toggle') return;
 
                 var container = document.createElement('div');
                 container.className = 'comment-form';
-                container.innerHTML = `<div style="margin-bottom:5px;"><b>新しい投稿</b></div>`;
+                
+                if (!currentUser) {
+                    container.innerHTML = `<div style="margin-bottom:10px; font-size:12px; color:red;">投稿するには<br>ログインしてください</div>`;
+                } else {
+                    container.innerHTML = `<div style="margin-bottom:5px;"><b>新しい投稿</b></div>`;
+                    
+                    var input = document.createElement('input');
+                    input.type = "text"; input.placeholder = "#タグ コメント..."; input.className = 'comment-input';
+                    container.appendChild(input);
 
-                var input = document.createElement('input');
-                input.type = "text"; input.placeholder = "#タグ コメント..."; input.className = 'comment-input';
-                container.appendChild(input);
+                    var fileInput = document.createElement('input');
+                    fileInput.type = "file"; fileInput.accept = "image/*"; fileInput.className = "file-input";
+                    container.appendChild(fileInput);
 
-                var fileInput = document.createElement('input');
-                fileInput.type = "file"; fileInput.accept = "image/*"; fileInput.className = "file-input";
-                container.appendChild(fileInput);
+                    var btn = document.createElement('button');
+                    btn.innerText = "投稿"; btn.className = 'comment-btn';
 
-                var btn = document.createElement('button');
-                btn.innerText = "投稿"; btn.className = 'comment-btn';
-
-                btn.onclick = function() {
-                    var text = input.value;
-                    if(!text) { alert("コメントを入力してください"); return; }
-
-                    var file = fileInput.files[0];
-                    if (file) {
-                        if(file.size > 800 * 1024) { 
-                            alert("画像が大きすぎます。もっと小さい画像にしてください。");
-                            return;
+                    btn.onclick = function() {
+                        var text = input.value;
+                        if(!text) { alert("コメントを入力してください"); return; }
+                        
+                        var file = fileInput.files[0];
+                        if (file) {
+                            if(file.size > 800 * 1024) { alert("画像が大きすぎます"); return; }
+                            var reader = new FileReader();
+                            reader.onload = function(evt) { submitToFirebase(e.latlng, text, evt.target.result); };
+                            reader.readAsDataURL(file);
+                        } else {
+                            submitToFirebase(e.latlng, text, null);
                         }
-                        var reader = new FileReader();
-                        reader.onload = function(evt) {
-                            submitToFirebase(e.latlng, text, evt.target.result);
-                        };
-                        reader.readAsDataURL(file);
-                    } else {
-                        submitToFirebase(e.latlng, text, null);
-                    }
-                };
-                container.appendChild(btn);
+                    };
+                    container.appendChild(btn);
+                }
                 L.popup().setLatLng(e.latlng).setContent(container).openOn(map);
             });
 
             function submitToFirebase(latlng, text, imageData) {
+                // ユーザー情報を付与して保存
                 db.collection("posts").add({
                     lat: latlng.lat,
                     lng: latlng.lng,
                     text: text,
                     image: imageData, 
                     likeCount: 0,
-                    date: new Date().toISOString()
+                    date: new Date().toISOString(),
+                    uid: currentUser.uid,              // 誰が投稿したか(ID)
+                    authorName: currentUser.displayName, // 名前
+                    authorPhoto: currentUser.photoURL    // アイコンURL
                 }).then(() => {
-                    console.log("投稿成功！");
                     map.closePopup();
                 }).catch((error) => {
-                    console.error("投稿エラー: ", error);
-                    alert("投稿できませんでした: " + error.message);
+                    alert("投稿失敗: " + error.message);
                 });
             }
 
@@ -281,28 +366,26 @@
                 var list = document.getElementById('comment-list');
                 var li = document.createElement('li');
                 li.className = 'comment-item';
-                var styledText = formatTextWithHashtags(data.text);
+                
+                // 自分の投稿ならクラスを追加（色を変えるため）
+                if (currentUser && data.uid === currentUser.uid) {
+                    li.classList.add('my-post');
+                }
 
                 li.onclick = function(e) {
                     if (e.target.closest('.delete-btn') || e.target.closest('.like-btn')) return;
-                    topZIndex++;
-                    marker.setZIndexOffset(topZIndex);
-                    map.panTo(marker.getLatLng());
-                    
-                    var iconElement = marker.getElement();
-                    if (iconElement) {
-                        document.querySelectorAll('.highlight-pin').forEach(el => el.classList.remove('highlight-pin'));
-                        iconElement.classList.add('highlight-pin');
-                        document.querySelectorAll('.comment-item').forEach(el => el.classList.remove('active'));
+                    topZIndex++; marker.setZIndexOffset(topZIndex); map.panTo(marker.getLatLng());
+                    var el = marker.getElement();
+                    if(el) {
+                        document.querySelectorAll('.highlight-pin').forEach(e=>e.classList.remove('highlight-pin'));
+                        el.classList.add('highlight-pin');
+                        document.querySelectorAll('.comment-item').forEach(e=>e.classList.remove('active'));
                         li.classList.add('active');
-                        if(window.innerWidth < 600) {
-                            document.getElementById('sidebar').classList.add('hidden');
-                            document.getElementById('sidebar-toggle').innerText = "▶ リストを表示";
-                            document.getElementById('sidebar-toggle').style.left = "10px";
-                        }
+                        if(window.innerWidth<600) { document.getElementById('sidebar').classList.add('hidden'); document.getElementById('sidebar-toggle').innerText="▶"; document.getElementById('sidebar-toggle').style.left="10px"; }
                     }
                 };
 
+                // 削除ボタン (自分の投稿のみ表示される制御はCSSで行う)
                 var delBtn = document.createElement('button');
                 delBtn.className = 'delete-btn';
                 delBtn.innerHTML = '&times;';
@@ -310,20 +393,28 @@
                     e.stopPropagation();
                     if(confirm("削除しますか？")) {
                         db.collection("posts").doc(docId).delete().then(() => {
-                            map.removeLayer(marker);
-                            delete markersMap[docId];
-                        }).catch((error) => {
-                            alert("削除エラー: " + error);
-                        });
+                            map.removeLayer(marker); delete markersMap[docId];
+                        }).catch(e => alert(e));
                     }
                 };
                 li.appendChild(delBtn);
 
+                // ヘッダー（ユーザー情報）
                 var header = document.createElement('div');
                 header.className = 'comment-header';
+                
+                // アイコンがあれば表示、なければデフォルト
+                var iconUrl = data.authorPhoto || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+                var name = data.authorName || '名無し';
+                
                 var dateObj = new Date(data.date);
                 var timeStr = dateObj.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                header.innerHTML = `<span>ID:...${docId.slice(-4)}</span><span>${timeStr}</span>`;
+
+                header.innerHTML = `
+                    <img class="author-icon" src="${iconUrl}">
+                    <span class="author-name">${name}</span>
+                    <span class="post-time">${timeStr}</span>
+                `;
                 li.appendChild(header);
 
                 if (data.image) {
@@ -333,37 +424,35 @@
 
                 var content = document.createElement('div');
                 content.className = 'comment-text';
-                content.innerHTML = styledText;
+                content.innerHTML = formatTextWithHashtags(data.text);
                 li.appendChild(content);
 
                 var actions = document.createElement('div');
                 actions.className = 'comment-actions';
                 var likeBtn = document.createElement('button');
                 likeBtn.className = 'like-btn';
-                if (data.likeCount > 0) {
-                    likeBtn.innerHTML = `❤️ ${data.likeCount}`;
-                    likeBtn.classList.add('liked');
-                } else { likeBtn.innerHTML = '❤️ いいね'; }
+                likeBtn.innerHTML = data.likeCount > 0 ? `❤️ ${data.likeCount}` : '❤️ いいね';
+                if(data.likeCount > 0) likeBtn.classList.add('liked');
                 
                 likeBtn.onclick = function(e) {
                     e.stopPropagation();
-                    var newCount = (data.likeCount || 0) + 1;
-                    db.collection("posts").doc(docId).update({ likeCount: newCount });
+                    db.collection("posts").doc(docId).update({ likeCount: (data.likeCount || 0) + 1 });
                 };
-
                 actions.appendChild(likeBtn);
                 li.appendChild(actions);
                 list.appendChild(li); 
             }
 
-            function createCustomIcon(id, text, likeCount, imageData) {
+            function createCustomIcon(id, text, likeCount, imageData, userIcon) {
                 var likeHtml = likeCount > 0 ? ` <span style="color:#ff4081">❤️${likeCount}</span>` : '';
                 var thumbHtml = imageData ? `<img src="${imageData}" class="pin-thumbnail">` : '';
+                var userIconHtml = userIcon ? `<img src="${userIcon}" class="pin-user-icon">` : ''; // ピンにもユーザーアイコン
+                
                 var html = `
                     <div class="custom-pin-container">
                         ${thumbHtml}
                         <div class="custom-pin-bubble">
-                            <span style="color:#007bff; margin-right:3px;">...${id.slice(-3)}</span>
+                            ${userIconHtml}
                             ${text}
                             ${likeHtml}
                         </div>
@@ -388,19 +477,17 @@
                 });
             }
 
+            // サイドバー開閉
             var sidebar = document.getElementById('sidebar');
             var toggleBtn = document.getElementById('sidebar-toggle');
             toggleBtn.onclick = function() {
                 sidebar.classList.toggle('hidden');
-                if (sidebar.classList.contains('hidden')) {
-                    toggleBtn.innerText = "▶ リストを表示"; toggleBtn.style.left = "10px";
-                } else {
-                    toggleBtn.innerText = "◀ リストを隠す"; toggleBtn.style.left = "330px";
-                }
+                if (sidebar.classList.contains('hidden')) { toggleBtn.innerText = "▶"; toggleBtn.style.left = "10px"; }
+                else { toggleBtn.innerText = "◀"; toggleBtn.style.left = "330px"; }
             };
-            if (window.innerWidth < 600) {
-                sidebar.classList.add('hidden'); toggleBtn.innerText = "▶ リストを表示"; toggleBtn.style.left = "10px";
-            }
+            if (window.innerWidth < 600) { sidebar.classList.add('hidden'); toggleBtn.innerText = "▶"; toggleBtn.style.left = "10px"; }
+
+            // GPS
             document.getElementById('gps-btn').onclick = function() {
                 if (!navigator.geolocation) return;
                 this.innerText = "測位中...";
