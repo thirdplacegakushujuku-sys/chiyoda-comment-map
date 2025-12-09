@@ -5,170 +5,245 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>千代田区コメントマップ</title>
     
-    <!-- PWA設定 -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007bff">
     <link rel="apple-touch-icon" href="icon.png">
     
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <!-- Leaflet JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
         /* --- 基本設定 --- */
-        body { margin: 0; padding: 0; overflow: hidden; font-family: "Helvetica Neue", Arial, sans-serif; color: #333; }
+        body { margin: 0; padding: 0; overflow: hidden; font-family: "Helvetica Neue", Arial, sans-serif; color: #333; background: #fff; }
         
-        #container { 
-            display: flex; height: 100vh; width: 100vw; flex-direction: row; 
-        }
+        #container { display: flex; height: 100vh; width: 100vw; flex-direction: row; }
 
         /* --- サイドバー --- */
         #sidebar {
-            width: 320px; background-color: #fff; border-right: 1px solid #ddd;
+            width: 340px; background-color: #fff; border-right: 1px solid #ddd;
             display: flex; flex-direction: column; z-index: 2000;
-            box-shadow: 2px 0 10px rgba(0,0,0,0.1); position: relative;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.05); position: relative;
         }
 
         /* --- 地図エリア --- */
-        #mapid { 
-            flex: 1; height: 100%; background-color: #eee; position: relative; 
-        }
+        #mapid { flex: 1; height: 100%; background-color: #fff; position: relative; }
 
         /* スマホ用レスポンシブ */
         @media (max-width: 600px) {
             #container { flex-direction: column; }
-            #mapid { height: 55%; width: 100%; order: 1; }
-            #sidebar { width: 100%; height: 45%; border-right: none; border-top: 1px solid #ddd; order: 2; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+            #mapid { height: 50%; width: 100%; order: 1; }
+            #sidebar { width: 100%; height: 50%; border-right: none; border-top: 1px solid #ddd; order: 2; }
             #sidebar-toggle { display: none; }
         }
 
         /* PC用開閉ボタン */
         #sidebar-toggle {
             position: absolute; top: 10px; left: 10px; z-index: 1000;
-            background-color: white; border: 2px solid #007bff; color: #007bff;
-            border-radius: 4px; padding: 5px 10px; cursor: pointer; font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            background-color: white; border: 1px solid #ddd; color: #555;
+            border-radius: 4px; padding: 5px 10px; cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
 
-        /* ログインエリア */
+        /* --- ログイン・ユーザーエリア --- */
         #login-section {
-            padding: 10px; background-color: #f8f9fa; border-bottom: 1px solid #ddd;
-            display: flex; align-items: center; justify-content: space-between;
+            padding: 15px; background-color: #fff; border-bottom: 1px solid #eee;
         }
-        #user-info { display: none; align-items: center; gap: 8px; width: 100%; }
-        #user-icon { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #ccc;}
+        #user-info { display: none; align-items: center; gap: 10px; }
         
-        /* ユーザー名と編集ボタンのコンテナ */
-        #user-name-container {
-            flex: 1; display: flex; align-items: center; gap: 5px; overflow: hidden;
+        /* アイコン編集用 */
+        .user-icon-wrapper { position: relative; cursor: pointer; }
+        #user-icon { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1px solid #eee; }
+        .icon-edit-overlay {
+            position: absolute; bottom: 0; right: -5px; background: #007bff; color: white;
+            border-radius: 50%; width: 16px; height: 16px; font-size: 10px;
+            display: flex; align-items: center; justify-content: center; border: 1px solid white;
         }
-        #user-name { font-weight: bold; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         
-        #edit-name-btn {
-            background: none; border: none; cursor: pointer; font-size: 12px; padding: 2px;
-            color: #007bff; display: flex; align-items: center; justify-content: center;
+        #user-details { flex: 1; overflow: hidden; }
+        #user-name { font-weight: bold; font-size: 14px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .edit-btn { background: none; border: none; color: #007bff; font-size: 11px; cursor: pointer; padding: 0; }
+        
+        .auth-btn { width: 100%; padding: 8px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 13px; }
+        .btn-login { background-color: #4285f4; color: white; }
+        .btn-logout { background-color: #f0f0f0; color: #555; width: auto; font-size: 11px; padding: 4px 8px; }
+
+        /* --- フィルタ・ソートエリア --- */
+        #filter-section {
+            padding: 10px 15px; border-bottom: 1px solid #eee; background: #fcfcfc;
+            display: flex; gap: 10px; align-items: center;
         }
-        #edit-name-btn:hover { background-color: #eef6ff; border-radius: 4px; }
-        
-        .auth-btn { padding: 6px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 12px; }
-        .btn-login { background-color: #4285f4; color: white; width: 100%; }
-        .btn-logout { background-color: #eee; color: #333; white-space: nowrap; }
+        .sort-select, .filter-select {
+            padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: #fff;
+        }
 
         #sidebar-content { flex: 1; overflow-y: auto; padding: 0; }
-        #hashtag-section {
-            padding: 10px; background-color: #f8f9fa; border-top: 1px solid #ddd;
-            font-size: 11px; white-space: nowrap; overflow-x: auto;
-        }
 
-        #gps-btn {
-            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
-            background-color: white; border: 2px solid #ccc; border-radius: 50%;
-            width: 40px; height: 40px; cursor: pointer; font-weight: bold; color: #333;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center;
-            font-size: 20px;
-        }
-
-        /* コメントリスト */
+        /* --- コメントリスト --- */
         #comment-list { list-style: none; padding: 0; margin: 0; }
         .comment-item {
-            display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f0f0f0;
-            cursor: pointer; transition: background 0.2s; height: 50px;
+            display: flex; align-items: flex-start; padding: 12px 15px; border-bottom: 1px solid #f5f5f5;
+            cursor: pointer; transition: all 0.2s;
         }
-        .comment-item:hover { background-color: #f5f5f5; }
-        .comment-item.active { background-color: #eef6ff; border-left: 4px solid #007bff; padding-left: 8px; }
-        .comment-item.my-post { background-color: #fff; }
-
-        .item-thumb { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; margin-right: 10px; background-color: #eee; border: 1px solid #ddd; flex-shrink: 0; }
-        .item-content { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
-        .item-text { font-size: 13px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-meta { font-size: 10px; color: #999; display: flex; align-items: center; gap: 5px; }
+        .comment-item:hover { background-color: #fafafa; }
         
-        .item-actions { display: flex; align-items: center; gap: 8px; margin-left: 10px; }
-        .item-like-btn { background: none; border: none; cursor: pointer; color: #ccc; font-size: 14px; padding: 0; display: flex; align-items: center; gap: 2px; }
-        .item-like-btn.liked { color: #ff4081; }
-        .item-delete-btn { background: none; border: none; cursor: pointer; color: #999; font-size: 18px; padding: 0 5px; display: none; }
-        .item-delete-btn:hover { color: #ff4444; }
-        .my-post .item-delete-btn { display: block; }
-
-        .hashtag { color: #007bff; margin-right: 3px; }
-        .popular-tag { display: inline-block; background-color: #fff; color: #007bff; border-radius: 12px; padding: 2px 8px; margin-right: 5px; border: 1px solid #b3d7ff; }
-
-        .custom-pin-container { position: relative; display: flex; flex-direction: column; align-items: center; }
-        .custom-pin-bubble {
-            background-color: #fff; color: #333; border: 2px solid #333; border-radius: 8px;
-            padding: 4px 8px; font-size: 11px; font-weight: bold; white-space: nowrap;
-            box-shadow: 2px 4px 6px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 4px;
-            transition: transform 0.2s; margin-bottom: 4px;
+        /* 上品な強調表示 */
+        .comment-item.active {
+            background-color: #fdfdfd;
+            box-shadow: inset 4px 0 0 #007bff; /* 左端に青いライン */
         }
-        .highlight-pin .custom-pin-bubble { background-color: #ff4081; color: white; border-color: #c51162; transform: scale(1.2); z-index: 9999; }
-        .highlight-pin .custom-pin-bubble::after { border-top-color: #333; }
-        .custom-pin-bubble::after { content: ''; position: absolute; bottom: -6px; left: 50%; margin-left: -6px; border-width: 6px 6px 0; border-style: solid; border-color: #333 transparent transparent transparent; }
-        .custom-pin-dot { width: 10px; height: 10px; background-color: #007bff; border: 2px solid white; border-radius: 50%; box-shadow: 0 0 4px rgba(0,0,0,0.5); }
-        .pin-thumbnail { width: 30px; height: 30px; object-fit: cover; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3); display: block; margin: 0 auto 4px auto; background-color: #ddd; }
 
-        .comment-form { text-align: center; width: 220px; }
-        .comment-input { width: 100%; padding: 8px; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        .file-input { width: 100%; margin-bottom: 10px; font-size: 12px; }
-        .comment-btn { width: 100%; padding: 8px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .item-avatar { width: 32px; height: 32px; border-radius: 50%; margin-right: 10px; object-fit: cover; background: #eee; flex-shrink: 0; }
+        
+        .item-body { flex: 1; min-width: 0; margin-right: 10px; }
+        .item-header { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; }
+        .item-author { font-weight: bold; font-size: 13px; color: #333; }
+        .item-time { font-size: 11px; color: #999; }
+        .item-text { font-size: 13px; color: #444; line-height: 1.4; word-wrap: break-word; }
+        
+        .item-footer { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+        .item-like-btn {
+            background: none; border: none; cursor: pointer; color: #ccc; font-size: 13px;
+            padding: 2px 5px; display: flex; align-items: center; gap: 4px; transition: color 0.2s;
+        }
+        .item-like-btn:hover { color: #ff4081; }
+        .item-like-btn.liked { color: #ff4081; }
+        
+        .item-delete-btn { color: #ccc; cursor: pointer; font-size: 12px; display: none; }
+        .item-delete-btn:hover { color: #ff4444; }
+        .my-post .item-delete-btn { display: inline-block; }
+
+        /* 右側の画像サムネイル */
+        .item-right-img {
+            width: 60px; height: 60px; border-radius: 6px; object-fit: cover;
+            border: 1px solid #eee; background: #f9f9f9; flex-shrink: 0;
+        }
+
+        /* --- カスタムピンのデザイン変更 --- */
+        .custom-pin-container {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        /* 吹き出し（ピル型） */
+        .custom-pin-bubble {
+            background-color: #fff; color: #333; 
+            border: 1px solid #ccc; 
+            border-radius: 20px; /* 丸くする */
+            padding: 4px 10px; font-size: 11px; font-weight: bold; white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            transition: all 0.3s ease;
+            max-width: 150px; overflow: hidden; text-overflow: ellipsis;
+        }
+        
+        /* 三角形（▼）は非表示にする */
+        .custom-pin-bubble::after { display: none; }
+
+        /* 上品な強調（地図上のピン） */
+        .highlight-pin .custom-pin-bubble {
+            border-color: #007bff;
+            background-color: #fff;
+            color: #007bff;
+            transform: scale(1.1);
+            /* 青い光彩 */
+            box-shadow: 0 0 15px rgba(0, 123, 255, 0.5);
+            z-index: 10000 !important;
+        }
+
+        /* ハッシュタグ */
+        .hashtag { color: #007bff; margin-right: 2px; }
+
+        /* --- 投稿フォームの改善 --- */
+        .comment-form { text-align: center; width: 240px; padding: 5px; }
+        .form-header { font-size: 12px; color: #666; margin-bottom: 8px; text-align: left; }
+        .comment-input {
+            width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd;
+            border-radius: 6px; box-sizing: border-box; font-size: 14px;
+        }
+        
+        .form-actions { display: flex; justify-content: space-between; align-items: center; }
+        
+        /* カメラ/画像選択アイコン */
+        .image-upload-label {
+            cursor: pointer; color: #007bff; font-size: 20px; padding: 5px;
+            transition: color 0.2s;
+        }
+        .image-upload-label:hover { color: #0056b3; }
+        .image-upload-label.has-file { color: #28a745; } /* 選択済みなら緑 */
+        
+        /* 隠しinput */
+        #post-file-input, #avatar-upload-input { display: none; }
+
+        .comment-btn {
+            padding: 8px 20px; background: #007bff; color: white; border: none;
+            border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 13px;
+        }
+        .comment-btn:disabled { background: #ccc; }
+
+        /* 現在地ボタン */
+        #gps-btn {
+            position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+            background-color: white; border: none; border-radius: 50%;
+            width: 44px; height: 44px; cursor: pointer; color: #555;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center;
+            font-size: 20px; transition: background 0.2s;
+        }
+        #gps-btn:active { background: #f0f0f0; }
+
+        /* 読み込み中 */
+        .loader { border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
 
     <div id="container">
-        <!-- 📱 スマホ: 下 / PC: 左 -->
         <div id="sidebar">
+            <!-- ログインエリア -->
             <div id="login-section">
                 <button id="login-btn" class="auth-btn btn-login">Googleでログイン</button>
+                
                 <div id="user-info">
-                    <img id="user-icon" src="" alt="icon">
-                    <div id="user-name-container">
+                    <!-- アイコン変更用のラッパー -->
+                    <label for="avatar-upload-input" class="user-icon-wrapper" title="アイコンを変更">
+                        <img id="user-icon" src="" alt="icon">
+                        <div class="icon-edit-overlay"><i class="fas fa-camera"></i></div>
+                    </label>
+                    <input type="file" id="avatar-upload-input" accept="image/*">
+
+                    <div id="user-details">
                         <span id="user-name"></span>
-                        <button id="edit-name-btn" title="名前を変更">✏️</button>
+                        <button id="edit-name-btn" class="edit-btn">名前を変更</button>
                     </div>
                     <button id="logout-btn" class="auth-btn btn-logout">ログアウト</button>
                 </div>
             </div>
 
+            <!-- フィルタ・ソート -->
+            <div id="filter-section">
+                <select id="sort-select" class="sort-select">
+                    <option value="newest">🕒 新着順</option>
+                    <option value="likes">❤️ いいね順</option>
+                </select>
+                <select id="filter-select" class="filter-select">
+                    <option value="all">全期間</option>
+                    <option value="24h">24時間以内</option>
+                    <option value="7d">1週間以内</option>
+                </select>
+            </div>
+
             <div id="sidebar-content">
                 <ul id="comment-list">
-                    <li id="loading-msg" style="text-align:center; color:#999; padding:20px; font-size:12px;">
-                        読み込み中...
-                    </li>
+                    <div id="loading-spinner" class="loader"></div>
                 </ul>
             </div>
-            
-            <div id="hashtag-section"></div>
         </div>
 
-        <!-- 📱 スマホ: 上 / PC: 右 -->
         <div id="mapid">
             <button id="sidebar-toggle" onclick="toggleSidebar()">◀</button>
-            <button id="gps-btn" title="現在地へ">📍</button>
+            <button id="gps-btn" title="現在地へ"><i class="fas fa-location-arrow"></i></button>
         </div>
     </div>
 
-    <!-- Firebaseライブラリ -->
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -178,7 +253,7 @@
         // 🔥 重要: 自分の firebaseConfig に書き換えてください
         // =========================================================
         const firebaseConfig = {
-          apiKey: "AIzaSyCZxC2imSus21qmrN4OelItvq9pyGJm0sE", // あなたのAPIキー
+          apiKey: "AIzaSyCZxC2imSus21qmrN4OelItvq9pyGJm0sE",
           authDomain: "chiyoda-map-sns.firebaseapp.com",
           projectId: "chiyoda-map-sns",
           storageBucket: "chiyoda-map-sns.firebasestorage.app",
@@ -203,265 +278,361 @@
             if (typeof L === 'undefined') { alert('地図エラー'); return; }
             if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(e=>{});
 
+            // 地図初期化
             var center = [35.685175, 139.752762];
             var map = L.map('mapid', { zoomControl: false }).setView(center, 14);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap', className: 'grayscale-tile' }).addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap', className: '' }).addTo(map);
 
-            var worldLatLngs = [[90, -180], [90, 180], [-90, 180], [-90, -180]];
-            var chiyodaHole = [[35.706, 139.728], [35.706, 139.784], [35.668, 139.784], [35.668, 139.728]];
-            L.polygon([worldLatLngs, chiyodaHole], { color: 'transparent', fillColor: '#000', fillOpacity: 0.6, interactive: false }).addTo(map);
-
+            // 変数
             var markersMap = {};
-            var hashtagStats = {};
+            var currentPostsData = []; // ソート・フィルタ用にデータを保持
             var topZIndex = 1000;
             var currentLocationMarker = null;
             var currentUser = null;
-            var currentHandleName = ""; // 現在のハンドルネーム
+            var userProfile = { name: "", photo: "" };
             var unsubscribe = null;
 
-            // 認証 & ユーザー情報取得
+            // 認証監視
             document.getElementById('login-btn').onclick = () => auth.signInWithPopup(provider).catch(e => alert(e.message));
             document.getElementById('logout-btn').onclick = () => auth.signOut();
             
             auth.onAuthStateChanged(async (user) => {
                 currentUser = user;
                 if (user) {
-                    // ★ ログイン時: Firestoreからハンドルネームを取得
-                    await checkUserProfile(user);
-                    
+                    await loadUserProfile(user);
                     document.getElementById('login-btn').style.display='none';
                     document.getElementById('user-info').style.display='flex';
-                    document.getElementById('user-icon').src = user.photoURL;
-                    document.getElementById('user-name').textContent = currentHandleName;
+                    updateProfileUI();
                 } else {
                     document.getElementById('login-btn').style.display='block';
                     document.getElementById('user-info').style.display='none';
-                    currentHandleName = "";
+                    userProfile = { name: "", photo: "" };
                 }
                 setupDataListener();
             });
 
-            // ★ ハンドルネームの取得・初期化
-            async function checkUserProfile(user) {
-                const userRef = db.collection('users').doc(user.uid);
-                try {
-                    const doc = await userRef.get();
-                    if (doc.exists) {
-                        // データがあればそれを使う
-                        currentHandleName = doc.data().handleName;
-                    } else {
-                        // なければGoogleの名前で初期化して保存
-                        currentHandleName = user.displayName;
-                        await userRef.set({
-                            handleName: currentHandleName,
-                            photoURL: user.photoURL,
-                            updatedAt: new Date().toISOString()
-                        });
-                    }
-                } catch(e) {
-                    console.error("プロフィール取得エラー", e);
-                    currentHandleName = user.displayName; // エラー時はとりあえずGoogle名
+            // プロフィール読み込み
+            async function loadUserProfile(user) {
+                const doc = await db.collection('users').doc(user.uid).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    userProfile.name = data.handleName || user.displayName;
+                    userProfile.photo = data.photoURL || user.photoURL;
+                } else {
+                    userProfile.name = user.displayName;
+                    userProfile.photo = user.photoURL;
+                    await db.collection('users').doc(user.uid).set({
+                        handleName: userProfile.name,
+                        photoURL: userProfile.photo,
+                        updatedAt: new Date().toISOString()
+                    });
                 }
-                document.getElementById('user-name').textContent = currentHandleName;
             }
 
-            // ★ ハンドルネーム変更ボタン
+            function updateProfileUI() {
+                document.getElementById('user-name').textContent = userProfile.name;
+                document.getElementById('user-icon').src = userProfile.photo;
+            }
+
+            // 名前変更
             document.getElementById('edit-name-btn').onclick = async function() {
-                if(!currentUser) return;
-                const newName = prompt("新しい名前を入力してください", currentHandleName);
-                if(newName && newName.trim() !== "") {
-                    try {
-                        // Firestoreを更新
-                        await db.collection('users').doc(currentUser.uid).update({
-                            handleName: newName
-                        });
-                        // ローカルも更新
-                        currentHandleName = newName;
-                        document.getElementById('user-name').textContent = newName;
-                    } catch(e) {
-                        alert("名前の変更に失敗しました: " + e.message);
-                    }
+                const newName = prompt("新しい名前:", userProfile.name);
+                if(newName && newName.trim()) {
+                    await db.collection('users').doc(currentUser.uid).update({ handleName: newName });
+                    userProfile.name = newName;
+                    updateProfileUI();
                 }
             };
 
+            // アイコン変更 (画像アップロード)
+            document.getElementById('avatar-upload-input').onchange = function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                if (file.size > 500 * 1024) { alert("画像サイズが大きすぎます(500KB以下推奨)"); return; }
+                
+                const reader = new FileReader();
+                reader.onload = async function(evt) {
+                    const base64 = evt.target.result;
+                    try {
+                        await db.collection('users').doc(currentUser.uid).update({ photoURL: base64 });
+                        userProfile.photo = base64;
+                        updateProfileUI();
+                    } catch(err) { alert("アイコン更新失敗: " + err.message); }
+                };
+                reader.readAsDataURL(file);
+            };
+
+            // データ監視と取得
             function setupDataListener() {
                 if(unsubscribe) unsubscribe();
-                unsubscribe = db.collection("posts").orderBy("date", "desc").onSnapshot((snapshot) => {
-                    var loadingMsg = document.getElementById('loading-msg');
-                    if (loadingMsg) loadingMsg.style.display = 'none';
+                // ※並び替えはクライアントサイドで行うため、Firestore側ではデフォルトの並びだけで取得
+                unsubscribe = db.collection("posts").onSnapshot((snapshot) => {
+                    document.getElementById('loading-spinner').style.display = 'none';
                     
-                    var list = document.getElementById('comment-list');
-                    list.innerHTML = "";
-                    hashtagStats = {};
-
-                    snapshot.forEach((doc) => {
-                        var data = doc.data();
-                        var docId = doc.id;
-                        var tags = data.text.match(/(#\S+)/g);
-                        if(tags) tags.forEach(t => { hashtagStats[t] = (hashtagStats[t] || 0) + 1; });
-
-                        if (!markersMap[docId]) {
-                            var styledText = formatTextWithHashtags(data.text);
-                            var customIcon = createCustomIcon(docId, styledText, data.likeCount, data.image);
-                            var marker = L.marker([data.lat, data.lng], { icon: customIcon }).addTo(map);
-                            markersMap[docId] = marker;
-                        } else {
-                            var marker = markersMap[docId];
-                            var styledText = formatTextWithHashtags(data.text);
-                            var newIcon = createCustomIcon(docId, styledText, data.likeCount, data.image);
-                            marker.setIcon(newIcon);
-                        }
-                        addSidebarItem(docId, data, markersMap[docId]);
+                    // データを配列に変換して保持
+                    currentPostsData = [];
+                    snapshot.forEach(doc => {
+                        currentPostsData.push({ id: doc.id, ...doc.data() });
                     });
-                    renderPopularHashtags();
+
+                    refreshUI(); // 画面更新
                 });
             }
 
+            // UI更新 (ソート・フィルタ・描画)
+            function refreshUI() {
+                const sortMode = document.getElementById('sort-select').value;
+                const filterMode = document.getElementById('filter-select').value;
+                const list = document.getElementById('comment-list');
+                list.innerHTML = ""; // クリア
+
+                // 1. フィルタリング
+                let filteredData = currentPostsData.filter(item => {
+                    if (filterMode === 'all') return true;
+                    const date = new Date(item.date);
+                    const now = new Date();
+                    const diffMs = now - date;
+                    if (filterMode === '24h') return diffMs < 24 * 60 * 60 * 1000;
+                    if (filterMode === '7d') return diffMs < 7 * 24 * 60 * 60 * 1000;
+                    return true;
+                });
+
+                // 2. ソート
+                filteredData.sort((a, b) => {
+                    if (sortMode === 'newest') {
+                        return new Date(b.date) - new Date(a.date);
+                    } else if (sortMode === 'likes') {
+                        // いいね数が多い順。同じなら新しい順
+                        const likeA = a.likedBy ? a.likedBy.length : 0;
+                        const likeB = b.likedBy ? b.likedBy.length : 0;
+                        if (likeB !== likeA) return likeB - likeA;
+                        return new Date(b.date) - new Date(a.date);
+                    }
+                });
+
+                // 3. 描画 (地図ピンとリスト)
+                // まず地図ピンの不要なものを削除する処理が必要だが、
+                // 簡易的に、既存マーカーを維持しつつ位置や内容を更新する方針で行く
+                
+                filteredData.forEach(data => {
+                    const docId = data.id;
+                    const likeCount = data.likedBy ? data.likedBy.length : 0;
+
+                    // ピン作成・更新
+                    if (!markersMap[docId]) {
+                        const icon = createCustomIcon(data.text, likeCount);
+                        const marker = L.marker([data.lat, data.lng], { icon: icon }).addTo(map);
+                        
+                        // Z-index: いいねが多いほど手前、かつID順で微調整
+                        marker.setZIndexOffset(likeCount * 100); 
+                        markersMap[docId] = marker;
+                    } else {
+                        const marker = markersMap[docId];
+                        marker.setIcon(createCustomIcon(data.text, likeCount));
+                        marker.setZIndexOffset(likeCount * 100);
+                    }
+
+                    // リスト追加
+                    addSidebarItem(docId, data, markersMap[docId]);
+                });
+                
+                // ※フィルタで消えたピンを削除する処理は省略（実運用では必要）
+            }
+
+            // ソート/フィルタ変更イベント
+            document.getElementById('sort-select').onchange = refreshUI;
+            document.getElementById('filter-select').onchange = refreshUI;
+
+            // 地図クリック -> 投稿フォーム
             map.on('click', function(e) {
-                if(e.originalEvent.target.id === 'gps-btn' || e.originalEvent.target.id === 'sidebar-toggle') return;
-                var container = document.createElement('div');
+                if(e.originalEvent.target.closest('button')) return;
+                
+                const container = document.createElement('div');
                 container.className = 'comment-form';
+                
                 if (!currentUser) {
-                    container.innerHTML = `<div style="margin-bottom:10px; font-size:12px; color:red;">投稿するには<br>ログインしてください</div>`;
+                    container.innerHTML = `<div style="font-size:12px;color:red;margin-bottom:10px;">投稿にはログインが必要です</div>`;
                 } else {
-                    // 投稿フォームに現在の名前を表示
-                    container.innerHTML = `<div style="margin-bottom:5px; font-size:12px;"><b>${currentHandleName}</b> として投稿</div>`;
-                    var input = document.createElement('input'); input.type = "text"; input.placeholder = "コメント..."; input.className = 'comment-input'; container.appendChild(input);
-                    var fileInput = document.createElement('input'); fileInput.type = "file"; fileInput.accept = "image/*"; fileInput.className = "file-input"; container.appendChild(fileInput);
-                    var btn = document.createElement('button'); btn.innerText = "投稿"; btn.className = 'comment-btn';
-                    btn.onclick = function() {
-                        var text = input.value;
-                        if(!text) { alert("入力してください"); return; }
-                        var file = fileInput.files[0];
-                        if (file) {
-                            if(file.size > 800 * 1024) { alert("画像が大きすぎます"); return; }
-                            var reader = new FileReader();
-                            reader.onload = function(evt) { submitToFirebase(e.latlng, text, evt.target.result); };
-                            reader.readAsDataURL(file);
-                        } else { submitToFirebase(e.latlng, text, null); }
-                    };
-                    container.appendChild(btn);
+                    container.innerHTML = `
+                        <div class="form-header"><b>${userProfile.name}</b> として投稿</div>
+                        <input type="text" id="post-text" class="comment-input" placeholder="コメントを入力...">
+                        <div class="form-actions">
+                            <label for="post-file-input" class="image-upload-label" id="file-label">
+                                <i class="fas fa-camera"></i>
+                            </label>
+                            <input type="file" id="post-file-input" accept="image/*" capture="environment">
+                            <button id="submit-post" class="comment-btn">投稿</button>
+                        </div>
+                    `;
                 }
-                L.popup().setLatLng(e.latlng).setContent(container).openOn(map);
+                
+                const popup = L.popup().setLatLng(e.latlng).setContent(container).openOn(map);
+
+                // ポップアップが開いた後のイベント設定
+                setTimeout(() => {
+                    if(!currentUser) return;
+                    
+                    const fileInput = document.getElementById('post-file-input');
+                    const label = document.getElementById('file-label');
+                    const btn = document.getElementById('submit-post');
+                    
+                    // ファイル選択時にアイコンの色を変える
+                    fileInput.onchange = () => {
+                        if(fileInput.files.length > 0) label.classList.add('has-file');
+                        else label.classList.remove('has-file');
+                    };
+
+                    btn.onclick = () => {
+                        const text = document.getElementById('post-text').value;
+                        if(!text) return alert("コメントを入力してください");
+                        
+                        const file = fileInput.files[0];
+                        if (file) {
+                            if (file.size > 800 * 1024) return alert("画像サイズ過大");
+                            const reader = new FileReader();
+                            reader.onload = (evt) => submitPost(e.latlng, text, evt.target.result);
+                            reader.readAsDataURL(file);
+                        } else {
+                            submitPost(e.latlng, text, null);
+                        }
+                    };
+                }, 100);
             });
 
-            function submitToFirebase(latlng, text, imageData) {
-                // ★ 投稿時に currentHandleName を使う
+            function submitPost(latlng, text, imageData) {
                 db.collection("posts").add({
-                    lat: latlng.lat, lng: latlng.lng, text: text, image: imageData, likeCount: 0,
-                    date: new Date().toISOString(), uid: currentUser.uid, 
-                    authorName: currentHandleName, // ここが変更点
-                    authorPhoto: currentUser.photoURL
+                    lat: latlng.lat, lng: latlng.lng, text: text, image: imageData,
+                    date: new Date().toISOString(),
+                    uid: currentUser.uid,
+                    authorName: userProfile.name,
+                    authorPhoto: userProfile.photo,
+                    likedBy: [] // いいねしたユーザーIDのリスト
                 }).then(() => map.closePopup()).catch(e => alert(e.message));
             }
 
+            // リストアイテム生成
             function addSidebarItem(docId, data, marker) {
-                var list = document.getElementById('comment-list');
-                var li = document.createElement('li');
+                const list = document.getElementById('comment-list');
+                const li = document.createElement('li');
                 li.className = 'comment-item';
                 if (currentUser && data.uid === currentUser.uid) li.classList.add('my-post');
 
-                var thumbSrc = data.image ? data.image : (data.authorPhoto || 'https://placehold.co/40');
-                var thumbDiv = document.createElement('img');
-                thumbDiv.className = 'item-thumb';
-                thumbDiv.src = thumbSrc;
-                li.appendChild(thumbDiv);
+                // 左: アイコン
+                const avatar = document.createElement('img');
+                avatar.className = 'item-avatar';
+                avatar.src = data.authorPhoto || 'https://placehold.co/40';
+                li.appendChild(avatar);
 
-                var contentDiv = document.createElement('div');
-                contentDiv.className = 'item-content';
+                // 中央: 内容
+                const body = document.createElement('div');
+                body.className = 'item-body';
                 
-                var textSpan = document.createElement('span');
-                textSpan.className = 'item-text';
-                textSpan.innerHTML = formatTextWithHashtags(data.text);
-                contentDiv.appendChild(textSpan);
+                const header = document.createElement('div');
+                header.className = 'item-header';
+                const timeStr = new Date(data.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                header.innerHTML = `<span class="item-author">${data.authorName}</span> <span class="item-time">${timeStr}</span>`;
+                body.appendChild(header);
 
-                var metaDiv = document.createElement('div');
-                metaDiv.className = 'item-meta';
-                var timeStr = new Date(data.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                metaDiv.innerHTML = `<span>${data.authorName}</span> • <span>${timeStr}</span>`;
-                contentDiv.appendChild(metaDiv);
+                const textDiv = document.createElement('div');
+                textDiv.className = 'item-text';
+                textDiv.innerHTML = formatTextWithHashtags(data.text);
+                body.appendChild(textDiv);
+
+                // アクション (いいね・削除)
+                const footer = document.createElement('div');
+                footer.className = 'item-footer';
                 
-                li.appendChild(contentDiv);
-
-                var actionsDiv = document.createElement('div');
-                actionsDiv.className = 'item-actions';
-
-                var likeBtn = document.createElement('button');
+                const likeBtn = document.createElement('button');
                 likeBtn.className = 'item-like-btn';
-                if(data.likeCount > 0) {
-                    likeBtn.innerHTML = `❤️ ${data.likeCount}`;
-                    likeBtn.classList.add('liked');
-                } else { likeBtn.innerHTML = `🤍`; }
-                likeBtn.onclick = function(e) {
-                    e.stopPropagation();
-                    db.collection("posts").doc(docId).update({ likeCount: (data.likeCount || 0) + 1 });
-                };
-                actionsDiv.appendChild(likeBtn);
+                const likeCount = data.likedBy ? data.likedBy.length : 0;
+                const isLiked = currentUser && data.likedBy && data.likedBy.includes(currentUser.uid);
+                
+                likeBtn.innerHTML = `<i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${likeCount || ''}`;
+                if(isLiked) likeBtn.classList.add('liked');
 
-                var delBtn = document.createElement('button');
-                delBtn.className = 'item-delete-btn';
-                delBtn.innerHTML = '&times;';
-                delBtn.onclick = function(e) {
+                likeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if(!currentUser) return alert("ログインしてください");
+                    
+                    const postRef = db.collection("posts").doc(docId);
+                    if (isLiked) {
+                        // 解除
+                        postRef.update({ likedBy: firebase.firestore.FieldValue.arrayRemove(currentUser.uid) });
+                    } else {
+                        // いいね
+                        postRef.update({ likedBy: firebase.firestore.FieldValue.arrayUnion(currentUser.uid) });
+                    }
+                };
+                footer.appendChild(likeBtn);
+
+                const delBtn = document.createElement('i');
+                delBtn.className = 'fas fa-trash item-delete-btn';
+                delBtn.onclick = (e) => {
                     e.stopPropagation();
                     if(confirm("削除しますか？")) {
                         li.remove(); map.removeLayer(marker);
-                        db.collection("posts").doc(docId).delete().catch(e => alert("削除失敗: " + e));
+                        db.collection("posts").doc(docId).delete();
                     }
                 };
-                actionsDiv.appendChild(delBtn);
-                li.appendChild(actionsDiv);
+                footer.appendChild(delBtn);
+                
+                body.appendChild(footer);
+                li.appendChild(body);
 
-                li.onclick = function(e) {
-                    if (e.target.closest('button')) return;
-                    topZIndex++; marker.setZIndexOffset(topZIndex); map.panTo(marker.getLatLng());
-                    var el = marker.getElement();
-                    if(el) {
-                        document.querySelectorAll('.highlight-pin').forEach(e=>e.classList.remove('highlight-pin'));
-                        el.classList.add('highlight-pin');
-                        document.querySelectorAll('.comment-item').forEach(e=>e.classList.remove('active'));
-                        li.classList.add('active');
-                    }
+                // 右: 画像 (あれば)
+                if (data.image) {
+                    const thumb = document.createElement('img');
+                    thumb.className = 'item-right-img';
+                    thumb.src = data.image;
+                    li.appendChild(thumb);
+                }
+
+                // クリック時の挙動
+                li.onclick = (e) => {
+                    if(e.target.closest('button') || e.target.closest('i')) return; // ボタン類は無視
+                    
+                    // ハイライト処理 (上品なシャドウ)
+                    document.querySelectorAll('.highlight-pin').forEach(el => el.classList.remove('highlight-pin'));
+                    if(marker.getElement()) marker.getElement().classList.add('highlight-pin');
+                    
+                    document.querySelectorAll('.comment-item').forEach(el => el.classList.remove('active'));
+                    li.classList.add('active');
+
+                    map.panTo(marker.getLatLng());
                 };
+
                 list.appendChild(li);
             }
 
-            function createCustomIcon(id, text, likeCount, imageData) {
-                var thumbHtml = imageData ? `<img src="${imageData}" class="pin-thumbnail">` : '';
-                var likeHtml = likeCount > 0 ? ` <span style="color:#ff4081">❤️${likeCount}</span>` : '';
-                var html = `<div class="custom-pin-container">${thumbHtml}<div class="custom-pin-bubble">${text}${likeHtml}</div><div class="custom-pin-dot"></div></div>`;
+            function createCustomIcon(text, likeCount) {
+                // 文字数制限
+                if(text.length > 10) text = text.substring(0, 10) + "...";
+                
+                // シンプルな吹き出しのみ
+                const html = `
+                    <div class="custom-pin-container">
+                        <div class="custom-pin-bubble">${text}</div>
+                    </div>`;
                 return L.divIcon({ html: html, className: '', iconSize: [0, 0], iconAnchor: [0, 0] });
             }
 
-            function formatTextWithHashtags(text) { return text.replace(/(#\S+)/g, '<span class="hashtag">$1</span>'); }
-
-            function renderPopularHashtags() {
-                var container = document.getElementById('hashtag-section');
-                var sortedTags = Object.keys(hashtagStats).map(k => ({ tag: k, count: hashtagStats[k] })).sort((a,b) => b.count - a.count);
-                if (sortedTags.length === 0) { container.innerHTML = "タグなし"; return; }
-                container.innerHTML = "";
-                sortedTags.slice(0, 10).forEach(i => {
-                    var span = document.createElement('span');
-                    span.className = 'popular-tag';
-                    span.innerHTML = `${i.tag} ${i.count}`;
-                    container.appendChild(span);
-                });
+            function formatTextWithHashtags(text) { 
+                return text ? text.replace(/(#\S+)/g, '<span class="hashtag">$1</span>') : ""; 
             }
 
+            // 現在地
             document.getElementById('gps-btn').onclick = function() {
                 if (!navigator.geolocation) return;
-                this.innerText = "⌛";
                 navigator.geolocation.getCurrentPosition(pos => {
-                    var latlng = [pos.coords.latitude, pos.coords.longitude];
+                    const latlng = [pos.coords.latitude, pos.coords.longitude];
                     map.setView(latlng, 16);
                     if (currentLocationMarker) currentLocationMarker.setLatLng(latlng);
                     else {
                         currentLocationMarker = L.circleMarker(latlng, { radius: 8, fillColor: "#3388ff", color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.8 }).addTo(map);
-                        L.circle(latlng, { radius: pos.coords.accuracy/2, color: 'transparent', fillColor: '#3388ff', fillOpacity: 0.2 }).addTo(map);
                     }
                     currentLocationMarker.bindPopup("現在地").openPopup();
-                    document.getElementById('gps-btn').innerText = "📍";
-                }, () => alert("位置情報エラー"));
+                });
             };
         };
     </script>
