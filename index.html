@@ -17,7 +17,7 @@
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Cropper.js (画像編集用) -->
+    <!-- Cropper.js -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
@@ -38,25 +38,28 @@
     </script>
 
     <style>
-        /* Leaflet調整 */
         body { overscroll-behavior: none; }
         .leaflet-popup-content-wrapper { border-radius: 12px; padding: 0; overflow: hidden; }
         .leaflet-popup-content { margin: 0; width: 260px !important; }
-        .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); z-index: 10; }
+        .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #333; background: rgba(255,255,255,0.8); border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; z-index: 10; font-size: 14px; }
         
-        /* マーカーデザイン */
+        /* --- マーカーデザイン --- */
         .marker-container {
             position: relative;
             overflow: visible !important;
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
             filter: drop-shadow(0 3px 4px rgba(0,0,0,0.2));
             width: 140px; height: 100px; padding-bottom: 5px;
+            /* ★重要★ コンテナ自体はクリックを通す（地図操作の邪魔にならないように） */
+            pointer-events: none; 
         }
 
         .marker-bubble {
             position: relative; background: white; border-radius: 99px; padding: 4px 12px;
             font-size: 11px; font-weight: bold; color: #334155; white-space: nowrap;
             max-width: 100%; text-align: center; margin-bottom: 6px; z-index: 10;
+            /* ★重要★ 吹き出しもクリックを通す */
+            pointer-events: none;
         }
         .marker-bubble::after {
             content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
@@ -65,7 +68,11 @@
 
         .marker-circle {
             position: relative; border-radius: 50%; z-index: 5; background-size: cover; background-position: center; transition: transform 0.2s;
+            /* ★重要★ ピン本体だけはクリックを受け付ける */
+            pointer-events: auto; 
+            cursor: pointer;
         }
+        
         .no-image-pin { width: 20px; height: 20px; border: 2px solid white; }
         .has-image-pin { width: 44px; height: 44px; border: 3px solid white; background-color: white; }
 
@@ -74,7 +81,6 @@
         .highlight-pin .marker-bubble { background-color: #eff6ff; color: #2563eb; }
         .highlight-pin .marker-bubble::after { border-top-color: #eff6ff; }
 
-        /* Cropper カスタムスタイル */
         .cropper-container { width: 100%; height: 100%; }
         
         .loader {
@@ -86,6 +92,13 @@
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+
+        /* カテゴリ選択ボタンのスタイル強化 */
+        .cat-radio:checked + .cat-label {
+            opacity: 1; transform: scale(1.1); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+            font-weight: bold;
+        }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden bg-gray-50 text-slate-700 font-sans">
@@ -172,10 +185,13 @@
         </div>
     </div>
 
-    <!-- 汎用ファイル選択用input (隠し) -->
+    <!-- 画像拡大表示モーダル (LightBox) -->
+    <div id="image-viewer" class="fixed inset-0 z-[10001] bg-black bg-opacity-95 hidden flex items-center justify-center p-2" onclick="this.classList.add('hidden')">
+        <img id="viewer-img" src="" class="max-w-full max-h-full rounded shadow-lg object-contain">
+    </div>
+
     <input type="file" id="global-file-input" accept="image/*" class="hidden">
 
-    <!-- トースト通知 -->
     <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl text-sm font-bold opacity-0 pointer-events-none transition-all duration-300 z-[9999] translate-y-4">
         通知
     </div>
@@ -216,9 +232,7 @@
                 modal.classList.remove('hidden');
                 if (cropper) cropper.destroy();
                 setTimeout(() => {
-                    cropper = new Cropper(img, {
-                        aspectRatio: 1, viewMode: 1, dragMode: 'move', autoCropArea: 1, background: false,
-                    });
+                    cropper = new Cropper(img, { aspectRatio: 1, viewMode: 1, dragMode: 'move', autoCropArea: 1, background: false });
                 }, 100);
                 onCropConfirm = callback;
             };
@@ -233,9 +247,7 @@
 
         document.getElementById('editor-save').onclick = () => {
             if (!cropper) return;
-            const canvas = cropper.getCroppedCanvas({
-                width: 400, height: 400, fillColor: '#fff', imageSmoothingEnabled: true, imageSmoothingQuality: 'high',
-            });
+            const canvas = cropper.getCroppedCanvas({ width: 400, height: 400, fillColor: '#fff', imageSmoothingEnabled: true, imageSmoothingQuality: 'high' });
             const base64 = canvas.toDataURL('image/jpeg', 0.85);
             if (onCropConfirm) onCropConfirm(base64);
             document.getElementById('editor-modal').classList.add('hidden');
@@ -251,6 +263,14 @@
                 openImageEditor(file, callback);
             };
             input.click();
+        }
+
+        // 画像拡大表示
+        function showImageViewer(src) {
+            const viewer = document.getElementById('image-viewer');
+            const img = document.getElementById('viewer-img');
+            img.src = src;
+            viewer.classList.remove('hidden');
         }
 
         function showToast(message, type = 'normal') {
@@ -279,16 +299,15 @@
 
             var center = [35.685175, 139.752762];
             
-            // ★ スクロール制限設定 (千代田区周辺)
             var southWest = L.latLng(35.660, 139.720);
             var northEast = L.latLng(35.715, 139.795);
             var bounds = L.latLngBounds(southWest, northEast);
 
             var map = L.map('mapid', { 
                 zoomControl: false,
-                maxBounds: bounds,       // 移動範囲の制限
-                maxBoundsViscosity: 1.0, // 壁の硬さ (1.0 = 完全停止)
-                minZoom: 13              // ズームアウト制限
+                maxBounds: bounds,       
+                maxBoundsViscosity: 1.0, 
+                minZoom: 13              
             }).setView(center, 14);
             
             L.control.zoom({ position: 'topright' }).addTo(map);
@@ -401,17 +420,18 @@
                 const div = document.createElement('div');
                 div.className = "flex flex-col";
                 
+                // 画像 (クリックで拡大)
                 if(data.image) {
                     const img = document.createElement('img');
                     img.src = data.image;
-                    img.className = "w-full h-32 object-cover bg-gray-100 cursor-pointer hover:opacity-90";
-                    // 画像クリックで拡大表示（簡易）
-                    img.onclick = () => window.open(data.image, '_blank');
+                    img.className = "w-16 h-16 object-cover rounded-lg bg-gray-100 cursor-pointer hover:opacity-90 border border-gray-200 mb-2";
+                    img.title = "拡大表示";
+                    // ★ 画像拡大
+                    img.onclick = () => showImageViewer(data.image);
                     div.appendChild(img);
                 }
 
                 const content = document.createElement('div');
-                content.className = "p-3";
                 
                 const header = document.createElement('div');
                 header.className = "flex items-center gap-2 mb-2";
@@ -423,12 +443,12 @@
                         <span class="text-[10px] text-slate-400">${timeStr}</span>
                     </div>
                 `;
-                content.appendChild(header);
+                div.appendChild(header);
 
                 const text = document.createElement('p');
                 text.className = "text-sm text-slate-700 mb-3 break-words";
                 text.innerHTML = formatTextWithHashtags(data.text);
-                content.appendChild(text);
+                div.appendChild(text);
 
                 const actions = document.createElement('div');
                 actions.className = "flex items-center justify-between border-t pt-2 mt-1";
@@ -467,8 +487,7 @@
                     actions.appendChild(delBtn);
                 }
 
-                content.appendChild(actions);
-                div.appendChild(content);
+                div.appendChild(actions);
                 return div;
             }
 
@@ -502,7 +521,11 @@
 
                     if (!markersMap[docId]) {
                         const icon = createCustomIcon(data.text, data.image, data.category);
+                        // ★ ピン側をクリックしたときのみポップアップを開く
+                        // L.Markerはデフォルトで全体がクリック対象だが、CSSで .marker-bubble を pointer-events: none にしているため
+                        // 吹き出し部分のクリックは地図に抜け、ピン本体(circle)のクリックのみがここに来る
                         const marker = L.marker([data.lat, data.lng], { icon: icon }).addTo(map);
+                        
                         marker.bindPopup(createPopupContent(data, docId));
                         marker.on('popupopen', () => selectPost(docId));
                         markersMap[docId] = marker;
@@ -552,7 +575,8 @@
             document.getElementById('sort-select').onchange = refreshUI;
 
             map.on('click', function(e) {
-                if(e.originalEvent.target.closest('button') || e.originalEvent.target.closest('.leaflet-popup-content')) return;
+                // ポップアップやボタン以外（＝地図背景）をクリックした場合のみ投稿フォームを出す
+                if(e.originalEvent.target.closest('button') || e.originalEvent.target.closest('.leaflet-popup-content') || e.originalEvent.target.closest('.leaflet-marker-icon')) return;
                 
                 selectedDocId = null;
                 document.querySelectorAll('.highlight-pin').forEach(el => el.classList.remove('highlight-pin'));
@@ -567,25 +591,25 @@
                     container.innerHTML = `
                         <div class="text-xs text-slate-500 mb-3 text-left font-medium"><b>${userProfile.name}</b> として投稿</div>
                         <div class="flex justify-between mb-3 px-1 gap-1">
-                            <label class="cursor-pointer p-2 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 has-checked:bg-orange-200 has-checked:border-orange-400 flex-1 transition">
-                                <input type="radio" name="cat" value="gourmet" class="hidden">
-                                <span class="text-lg"><i class="fas fa-utensils text-orange-500"></i></span>
+                            <label class="cursor-pointer p-2 rounded-lg bg-orange-50 hover:bg-orange-100 border border-orange-200 has-checked:bg-orange-200 has-checked:border-orange-400 flex-1 transition flex items-center justify-center">
+                                <input type="radio" name="cat" value="gourmet" class="hidden cat-radio">
+                                <span class="text-lg cat-label"><i class="fas fa-utensils text-orange-500"></i></span>
                             </label>
-                            <label class="cursor-pointer p-2 rounded-lg bg-green-50 hover:bg-green-100 border border-green-200 has-checked:bg-green-200 has-checked:border-green-400 flex-1 transition">
-                                <input type="radio" name="cat" value="view" class="hidden">
-                                <span class="text-lg"><i class="fas fa-mountain-sun text-green-600"></i></span>
+                            <label class="cursor-pointer p-2 rounded-lg bg-green-50 hover:bg-green-100 border border-green-200 has-checked:bg-green-200 has-checked:border-green-400 flex-1 transition flex items-center justify-center">
+                                <input type="radio" name="cat" value="view" class="hidden cat-radio">
+                                <span class="text-lg cat-label"><i class="fas fa-mountain-sun text-green-600"></i></span>
                             </label>
-                            <label class="cursor-pointer p-2 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 has-checked:bg-purple-200 has-checked:border-purple-400 flex-1 transition">
-                                <input type="radio" name="cat" value="event" class="hidden">
-                                <span class="text-lg"><i class="fas fa-calendar-check text-purple-500"></i></span>
+                            <label class="cursor-pointer p-2 rounded-lg bg-purple-50 hover:bg-purple-100 border border-purple-200 has-checked:bg-purple-200 has-checked:border-purple-400 flex-1 transition flex items-center justify-center">
+                                <input type="radio" name="cat" value="event" class="hidden cat-radio">
+                                <span class="text-lg cat-label"><i class="fas fa-calendar-check text-purple-500"></i></span>
                             </label>
-                            <label class="cursor-pointer p-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 has-checked:bg-blue-200 has-checked:border-blue-400 flex-1 transition">
-                                <input type="radio" name="cat" value="other" class="hidden" checked>
-                                <span class="text-lg"><i class="fas fa-comment-dots text-blue-500"></i></span>
+                            <label class="cursor-pointer p-2 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 has-checked:bg-blue-200 has-checked:border-blue-400 flex-1 transition flex items-center justify-center">
+                                <input type="radio" name="cat" value="other" class="hidden cat-radio" checked>
+                                <span class="text-lg cat-label"><i class="fas fa-comment-dots text-blue-500"></i></span>
                             </label>
                         </div>
-                        <style>.has-checked:has(:checked) { transform: scale(1.05); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }</style>
-                        <input type="text" id="post-text" class="w-full p-2 mb-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="コメント...">
+                        <style>.has-checked:has(:checked) { transform: scale(1.05); box-shadow: 0 2px 4px rgba(0,0,0,0.1); background-color: rgba(255,255,255,0.8); }</style>
+                        <input type="text" id="post-text" class="w-full p-2 mb-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="コメント(30文字以内)..." maxlength="30">
                         
                         <div id="image-preview-container" class="hidden mb-3 relative group">
                             <img id="image-preview" src="" class="w-full h-32 object-cover rounded-lg border border-slate-200">
@@ -700,13 +724,29 @@
                 };
                 footer.appendChild(shareBtn);
 
+                if (currentUser && data.uid === currentUser.uid) {
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'text-slate-300 hover:text-red-500 transition text-xs ml-auto opacity-0 group-hover:opacity-100';
+                    delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                    delBtn.onclick = (e) => {
+                        e.stopPropagation();
+                        if(confirm("削除しますか？")) db.collection("posts").doc(docId).delete().then(()=>showToast("削除しました"));
+                    };
+                    footer.appendChild(delBtn);
+                }
+                
                 body.appendChild(footer);
                 li.appendChild(body);
 
                 if (data.image) {
                     const thumb = document.createElement('img');
-                    thumb.className = 'w-16 h-16 rounded-lg object-cover border border-gray-100 bg-gray-50 flex-shrink-0';
+                    thumb.className = 'w-16 h-16 rounded-lg object-cover border border-gray-100 bg-gray-50 flex-shrink-0 cursor-pointer hover:opacity-80';
                     thumb.src = data.image;
+                    // リストの画像クリックでも拡大
+                    thumb.onclick = (e) => {
+                        e.stopPropagation();
+                        showImageViewer(data.image);
+                    };
                     li.appendChild(thumb);
                 }
 
