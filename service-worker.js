@@ -1,5 +1,5 @@
-// キャッシュの名前（更新したい時はここの数字を変える: v1 -> v2）
-const CACHE_NAME = 'chiyoda-map-v2';
+// 更新用バージョン番号: v3
+const CACHE_NAME = 'chiyoda-map-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -7,7 +7,6 @@ const urlsToCache = [
   './icon.png'
 ];
 
-// 1. インストール時：キャッシュの準備
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -16,12 +15,11 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// 2. データ取得時：【重要】ネットワーク優先の戦略
+// ネットワーク優先戦略
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // ネットから最新が取れたら、それを返しつつキャッシュも更新する
         if (!response || response.status !== 200 || response.type !== 'basic') {
           return response;
         }
@@ -32,13 +30,11 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => {
-        // ネットに繋がらない（オフライン）時だけキャッシュを使う
         return caches.match(event.request);
       })
   );
 });
 
-// 3. 新しいバージョンになったら古いキャッシュを消す
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
