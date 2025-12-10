@@ -107,7 +107,6 @@
                         <div class="absolute bottom-0 right-0 bg-primary text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] border border-white">
                             <i class="fas fa-pen"></i>
                         </div>
-                        <!-- アイコン変更も編集機能経由にするためonclickを設定 -->
                         <button id="change-icon-btn" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"></button>
                     </label>
                     <div class="flex-1 min-w-0">
@@ -205,84 +204,54 @@
         const auth = firebase.auth();
         const provider = new firebase.auth.GoogleAuthProvider();
 
-        // ---------------------------------------------------------
-        // 画像編集機能 (Cropper.js)
-        // ---------------------------------------------------------
         let cropper = null;
-        let onCropConfirm = null; // コールバック関数
+        let onCropConfirm = null;
 
         function openImageEditor(file, callback) {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = document.getElementById('editor-image');
                 img.src = e.target.result;
-                
                 const modal = document.getElementById('editor-modal');
                 modal.classList.remove('hidden');
-                
-                // Cropper初期化 (以前のがあれば破棄)
                 if (cropper) cropper.destroy();
-                
-                // 画像読み込み後にCropper適用
                 setTimeout(() => {
                     cropper = new Cropper(img, {
-                        aspectRatio: 1, // 正方形 1:1
-                        viewMode: 1,
-                        dragMode: 'move',
-                        autoCropArea: 1,
-                        background: false,
+                        aspectRatio: 1, viewMode: 1, dragMode: 'move', autoCropArea: 1, background: false,
                     });
                 }, 100);
-
                 onCropConfirm = callback;
             };
             reader.readAsDataURL(file);
         }
 
-        // 編集モーダルのボタンイベント
         document.getElementById('editor-cancel').onclick = () => {
-            document.getElementById('editor-modal').classList.add('hidden');
-            if (cropper) cropper.destroy();
-            document.getElementById('global-file-input').value = ''; // リセット
-        };
-
-        document.getElementById('editor-save').onclick = () => {
-            if (!cropper) return;
-            // 400x400にリサイズして取得
-            const canvas = cropper.getCroppedCanvas({
-                width: 400,
-                height: 400,
-                fillColor: '#fff',
-                imageSmoothingEnabled: true,
-                imageSmoothingQuality: 'high',
-            });
-            
-            // JPEGで高品質に変換 (容量削減のため)
-            const base64 = canvas.toDataURL('image/jpeg', 0.85);
-            
-            if (onCropConfirm) onCropConfirm(base64);
-            
             document.getElementById('editor-modal').classList.add('hidden');
             if (cropper) cropper.destroy();
             document.getElementById('global-file-input').value = '';
         };
 
-        // ファイル選択ダイアログを開くヘルパー
+        document.getElementById('editor-save').onclick = () => {
+            if (!cropper) return;
+            const canvas = cropper.getCroppedCanvas({
+                width: 400, height: 400, fillColor: '#fff', imageSmoothingEnabled: true, imageSmoothingQuality: 'high',
+            });
+            const base64 = canvas.toDataURL('image/jpeg', 0.85);
+            if (onCropConfirm) onCropConfirm(base64);
+            document.getElementById('editor-modal').classList.add('hidden');
+            if (cropper) cropper.destroy();
+            document.getElementById('global-file-input').value = '';
+        };
+
         function selectImage(callback) {
             const input = document.getElementById('global-file-input');
             input.onchange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
-                // 編集画面を開く
                 openImageEditor(file, callback);
             };
             input.click();
         }
-
-
-        // ---------------------------------------------------------
-        // アプリ本体ロジック
-        // ---------------------------------------------------------
 
         function showToast(message, type = 'normal') {
             const toast = document.getElementById("toast");
@@ -309,7 +278,19 @@
             if ('serviceWorker' in navigator) navigator.serviceWorker.register('./service-worker.js').catch(e=>{});
 
             var center = [35.685175, 139.752762];
-            var map = L.map('mapid', { zoomControl: false }).setView(center, 14);
+            
+            // ★ スクロール制限設定 (千代田区周辺)
+            var southWest = L.latLng(35.660, 139.720);
+            var northEast = L.latLng(35.715, 139.795);
+            var bounds = L.latLngBounds(southWest, northEast);
+
+            var map = L.map('mapid', { 
+                zoomControl: false,
+                maxBounds: bounds,       // 移動範囲の制限
+                maxBoundsViscosity: 1.0, // 壁の硬さ (1.0 = 完全停止)
+                minZoom: 13              // ズームアウト制限
+            }).setView(center, 14);
+            
             L.control.zoom({ position: 'topright' }).addTo(map);
             
             var standard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
@@ -375,7 +356,6 @@
                 }
             };
 
-            // アイコン変更 (クロッパー経由)
             document.getElementById('change-icon-btn').onclick = function() {
                 selectImage(async (base64) => {
                     try {
@@ -387,7 +367,6 @@
                 });
             };
 
-            // 更新ボタン
             document.getElementById('refresh-btn').onclick = function() {
                 const btn = this;
                 btn.classList.add('animate-spin');
@@ -418,7 +397,6 @@
                 });
             }
 
-            // ポップアップコンテンツ生成
             function createPopupContent(data, docId) {
                 const div = document.createElement('div');
                 div.className = "flex flex-col";
@@ -426,7 +404,9 @@
                 if(data.image) {
                     const img = document.createElement('img');
                     img.src = data.image;
-                    img.className = "w-full h-32 object-cover bg-gray-100";
+                    img.className = "w-full h-32 object-cover bg-gray-100 cursor-pointer hover:opacity-90";
+                    // 画像クリックで拡大表示（簡易）
+                    img.onclick = () => window.open(data.image, '_blank');
                     div.appendChild(img);
                 }
 
@@ -572,7 +552,8 @@
             document.getElementById('sort-select').onchange = refreshUI;
 
             map.on('click', function(e) {
-                if(e.originalEvent.target.closest('button')) return;
+                if(e.originalEvent.target.closest('button') || e.originalEvent.target.closest('.leaflet-popup-content')) return;
+                
                 selectedDocId = null;
                 document.querySelectorAll('.highlight-pin').forEach(el => el.classList.remove('highlight-pin'));
                 document.querySelectorAll('.comment-item').forEach(el => el.classList.remove('bg-blue-50', 'border-l-4', 'border-primary'));
@@ -606,7 +587,6 @@
                         <style>.has-checked:has(:checked) { transform: scale(1.05); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }</style>
                         <input type="text" id="post-text" class="w-full p-2 mb-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="コメント...">
                         
-                        <!-- プレビュー表示エリア -->
                         <div id="image-preview-container" class="hidden mb-3 relative group">
                             <img id="image-preview" src="" class="w-full h-32 object-cover rounded-lg border border-slate-200">
                             <button id="remove-image-btn" class="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-500 transition">✕</button>
@@ -626,7 +606,6 @@
                     const previewContainer = document.getElementById('image-preview-container');
                     const previewImg = document.getElementById('image-preview');
                     
-                    // 画像選択ボタン
                     document.getElementById('select-image-btn').onclick = () => {
                         selectImage((base64) => {
                             selectedImageBase64 = base64;
@@ -636,7 +615,6 @@
                         });
                     };
 
-                    // 画像削除ボタン
                     document.getElementById('remove-image-btn').onclick = () => {
                         selectedImageBase64 = null;
                         previewContainer.classList.add('hidden');
