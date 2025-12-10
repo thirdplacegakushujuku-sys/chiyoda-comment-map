@@ -16,6 +16,11 @@
     
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Cropper.js (画像編集用) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
 
@@ -39,83 +44,39 @@
         .leaflet-popup-content { margin: 0; width: 260px !important; }
         .leaflet-container a.leaflet-popup-close-button { top: 8px; right: 8px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); z-index: 10; }
         
-        /* --- マーカーデザイン修正 (重要) --- */
+        /* マーカーデザイン */
         .marker-container {
             position: relative;
-            overflow: visible !important; /* はみ出し許可 */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            /* 影 */
+            overflow: visible !important;
+            display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
             filter: drop-shadow(0 3px 4px rgba(0,0,0,0.2));
-            width: 140px; /* 幅確保 */
-            height: 100px; /* 高さ確保 */
-            justify-content: flex-end; /* 下揃え */
-            padding-bottom: 5px; /* マージン調整 */
+            width: 140px; height: 100px; padding-bottom: 5px;
         }
 
-        /* 吹き出し */
         .marker-bubble {
-            position: relative;
-            background: white;
-            border-radius: 99px;
-            padding: 4px 12px;
-            font-size: 11px;
-            font-weight: bold;
-            color: #334155;
-            white-space: nowrap;
-            max-width: 100%;
-            text-align: center;
-            margin-bottom: 6px; /* しっぽの分空ける */
-            z-index: 10;
+            position: relative; background: white; border-radius: 99px; padding: 4px 12px;
+            font-size: 11px; font-weight: bold; color: #334155; white-space: nowrap;
+            max-width: 100%; text-align: center; margin-bottom: 6px; z-index: 10;
         }
-        /* 吹き出しのしっぽ (CSS三角形) */
         .marker-bubble::after {
-            content: '';
-            position: absolute;
-            bottom: -5px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 0;
-            height: 0;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid white;
+            content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 5px solid white;
         }
 
-        /* ピン本体 (丸) */
         .marker-circle {
-            position: relative;
-            border-radius: 50%;
-            z-index: 5;
-            background-size: cover;
-            background-position: center;
-            transition: transform 0.2s;
+            position: relative; border-radius: 50%; z-index: 5; background-size: cover; background-position: center; transition: transform 0.2s;
         }
-        
-        /* 画像なしピン */
-        .no-image-pin {
-            width: 20px;
-            height: 20px;
-            border: 2px solid white;
-            /* 色はJSで指定 */
-        }
-        
-        /* 画像ありピン */
-        .has-image-pin {
-            width: 44px;
-            height: 44px;
-            border: 3px solid white;
-            background-color: white;
-        }
+        .no-image-pin { width: 20px; height: 20px; border: 2px solid white; }
+        .has-image-pin { width: 44px; height: 44px; border: 3px solid white; background-color: white; }
 
-        /* 強調表示 */
         .highlight-pin { z-index: 9999 !important; }
         .highlight-pin .marker-circle { transform: scale(1.2); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.4); }
         .highlight-pin .marker-bubble { background-color: #eff6ff; color: #2563eb; }
         .highlight-pin .marker-bubble::after { border-top-color: #eff6ff; }
 
-        /* ロードスピナー */
+        /* Cropper カスタムスタイル */
+        .cropper-container { width: 100%; height: 100%; }
+        
         .loader {
             border-top-color: #3b82f6;
             -webkit-animation: spinner 1.5s linear infinite;
@@ -144,9 +105,10 @@
                     <label class="relative cursor-pointer group flex-shrink-0">
                         <img id="user-icon" src="" class="w-10 h-10 rounded-full object-cover border-2 border-gray-100 group-hover:border-primary transition">
                         <div class="absolute bottom-0 right-0 bg-primary text-white rounded-full w-4 h-4 flex items-center justify-center text-[8px] border border-white">
-                            <i class="fas fa-camera"></i>
+                            <i class="fas fa-pen"></i>
                         </div>
-                        <input type="file" id="avatar-upload-input" accept="image/*" class="hidden">
+                        <!-- アイコン変更も編集機能経由にするためonclickを設定 -->
+                        <button id="change-icon-btn" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"></button>
                     </label>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-baseline gap-2">
@@ -198,6 +160,22 @@
         </div>
     </div>
 
+    <!-- 画像編集モーダル -->
+    <div id="editor-modal" class="fixed inset-0 z-[10000] bg-black bg-opacity-90 hidden flex flex-col items-center justify-center p-4">
+        <div class="w-full max-w-lg bg-gray-900 rounded-lg overflow-hidden flex flex-col h-[70vh] shadow-2xl">
+            <div class="flex-1 relative overflow-hidden flex items-center justify-center bg-black">
+                <img id="editor-image" class="max-w-full max-h-full block" src="">
+            </div>
+            <div class="p-4 flex justify-between bg-white border-t border-gray-200">
+                <button id="editor-cancel" class="text-gray-500 font-bold px-4 py-2 hover:bg-gray-100 rounded-lg transition">キャンセル</button>
+                <button id="editor-save" class="bg-primary text-white font-bold px-6 py-2 rounded-lg hover:bg-blue-600 transition shadow-md">決定 (400x400)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 汎用ファイル選択用input (隠し) -->
+    <input type="file" id="global-file-input" accept="image/*" class="hidden">
+
     <!-- トースト通知 -->
     <div id="toast" class="fixed bottom-20 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-3 rounded-full shadow-2xl text-sm font-bold opacity-0 pointer-events-none transition-all duration-300 z-[9999] translate-y-4">
         通知
@@ -226,6 +204,85 @@
         const db = firebase.firestore();
         const auth = firebase.auth();
         const provider = new firebase.auth.GoogleAuthProvider();
+
+        // ---------------------------------------------------------
+        // 画像編集機能 (Cropper.js)
+        // ---------------------------------------------------------
+        let cropper = null;
+        let onCropConfirm = null; // コールバック関数
+
+        function openImageEditor(file, callback) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = document.getElementById('editor-image');
+                img.src = e.target.result;
+                
+                const modal = document.getElementById('editor-modal');
+                modal.classList.remove('hidden');
+                
+                // Cropper初期化 (以前のがあれば破棄)
+                if (cropper) cropper.destroy();
+                
+                // 画像読み込み後にCropper適用
+                setTimeout(() => {
+                    cropper = new Cropper(img, {
+                        aspectRatio: 1, // 正方形 1:1
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 1,
+                        background: false,
+                    });
+                }, 100);
+
+                onCropConfirm = callback;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // 編集モーダルのボタンイベント
+        document.getElementById('editor-cancel').onclick = () => {
+            document.getElementById('editor-modal').classList.add('hidden');
+            if (cropper) cropper.destroy();
+            document.getElementById('global-file-input').value = ''; // リセット
+        };
+
+        document.getElementById('editor-save').onclick = () => {
+            if (!cropper) return;
+            // 400x400にリサイズして取得
+            const canvas = cropper.getCroppedCanvas({
+                width: 400,
+                height: 400,
+                fillColor: '#fff',
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+            
+            // JPEGで高品質に変換 (容量削減のため)
+            const base64 = canvas.toDataURL('image/jpeg', 0.85);
+            
+            if (onCropConfirm) onCropConfirm(base64);
+            
+            document.getElementById('editor-modal').classList.add('hidden');
+            if (cropper) cropper.destroy();
+            document.getElementById('global-file-input').value = '';
+        };
+
+        // ファイル選択ダイアログを開くヘルパー
+        function selectImage(callback) {
+            const input = document.getElementById('global-file-input');
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+                // 編集画面を開く
+                openImageEditor(file, callback);
+            };
+            input.click();
+        }
+
+
+        // ---------------------------------------------------------
+        // アプリ本体ロジック
+        // ---------------------------------------------------------
 
         function showToast(message, type = 'normal') {
             const toast = document.getElementById("toast");
@@ -318,20 +375,16 @@
                 }
             };
 
-            document.getElementById('avatar-upload-input').onchange = function(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                if (file.size > 500 * 1024) { showToast("画像サイズが大きすぎます", 'error'); return; }
-                const reader = new FileReader();
-                reader.onload = async function(evt) {
-                    const base64 = evt.target.result;
+            // アイコン変更 (クロッパー経由)
+            document.getElementById('change-icon-btn').onclick = function() {
+                selectImage(async (base64) => {
                     try {
                         await db.collection('users').doc(currentUser.uid).update({ photoURL: base64 });
-                        userProfile.photo = base64; updateProfileUI();
+                        userProfile.photo = base64; 
+                        updateProfileUI();
                         showToast("アイコンを変更しました", 'success');
                     } catch(err) { showToast("更新失敗", 'error'); }
-                };
-                reader.readAsDataURL(file);
+                });
             };
 
             // 更新ボタン
@@ -365,12 +418,11 @@
                 });
             }
 
-            // ★ ポップアップコンテンツ生成 (詳細表示)
+            // ポップアップコンテンツ生成
             function createPopupContent(data, docId) {
                 const div = document.createElement('div');
                 div.className = "flex flex-col";
                 
-                // 画像
                 if(data.image) {
                     const img = document.createElement('img');
                     img.src = data.image;
@@ -381,7 +433,6 @@
                 const content = document.createElement('div');
                 content.className = "p-3";
                 
-                // 投稿者
                 const header = document.createElement('div');
                 header.className = "flex items-center gap-2 mb-2";
                 const timeStr = new Date(data.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
@@ -394,20 +445,17 @@
                 `;
                 content.appendChild(header);
 
-                // テキスト
                 const text = document.createElement('p');
                 text.className = "text-sm text-slate-700 mb-3 break-words";
                 text.innerHTML = formatTextWithHashtags(data.text);
                 content.appendChild(text);
 
-                // アクションボタン
                 const actions = document.createElement('div');
                 actions.className = "flex items-center justify-between border-t pt-2 mt-1";
                 
                 const likeCount = data.likedBy ? data.likedBy.length : 0;
                 const isLiked = currentUser && data.likedBy && data.likedBy.includes(currentUser.uid);
                 
-                // いいね
                 const likeBtn = document.createElement('button');
                 likeBtn.className = "flex items-center gap-1 text-slate-400 hover:text-pink-500 transition text-xs font-bold";
                 likeBtn.innerHTML = `<i class="${isLiked ? 'fas' : 'far'} fa-heart ${isLiked ? 'text-pink-500' : ''}"></i> ${likeCount || 'いいね'}`;
@@ -419,7 +467,6 @@
                 };
                 actions.appendChild(likeBtn);
 
-                // シェア
                 const shareBtn = document.createElement('button');
                 shareBtn.className = "text-slate-400 hover:text-primary transition text-xs";
                 shareBtn.innerHTML = '<i class="fas fa-share-alt"></i>';
@@ -430,7 +477,6 @@
                 };
                 actions.appendChild(shareBtn);
 
-                // 削除 (自分の場合)
                 if (currentUser && data.uid === currentUser.uid) {
                     const delBtn = document.createElement('button');
                     delBtn.className = "text-slate-300 hover:text-red-500 transition text-xs";
@@ -477,24 +523,13 @@
                     if (!markersMap[docId]) {
                         const icon = createCustomIcon(data.text, data.image, data.category);
                         const marker = L.marker([data.lat, data.lng], { icon: icon }).addTo(map);
-                        
-                        // ★ ポップアップのバインド
-                        // DOM要素を渡すことでイベントリスナーも機能する
                         marker.bindPopup(createPopupContent(data, docId));
-                        
-                        // クリック時のサイドバー連動
-                        marker.on('popupopen', () => {
-                            selectPost(docId);
-                        });
-
+                        marker.on('popupopen', () => selectPost(docId));
                         markersMap[docId] = marker;
                     } else {
                         const marker = markersMap[docId];
                         marker.setIcon(createCustomIcon(data.text, data.image, data.category));
-                        // ポップアップ内容も更新
                         if(marker.getPopup() && marker.getPopup().isOpen()) {
-                            // 開いている場合は中身だけ更新したいが、簡単のため閉じずに再バインドはLeafletでは難しいので
-                            // 次回クリック時に反映されるようにバインドし直す
                             marker.setPopupContent(createPopupContent(data, docId));
                         } else {
                             marker.bindPopup(createPopupContent(data, docId));
@@ -523,7 +558,6 @@
                     listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
                 
-                // ピン強調
                 Object.keys(markersMap).forEach(id => {
                     const m = markersMap[id];
                     if(id === docId) {
@@ -539,8 +573,6 @@
 
             map.on('click', function(e) {
                 if(e.originalEvent.target.closest('button')) return;
-                
-                // 何もないところをクリックしたら選択解除
                 selectedDocId = null;
                 document.querySelectorAll('.highlight-pin').forEach(el => el.classList.remove('highlight-pin'));
                 document.querySelectorAll('.comment-item').forEach(el => el.classList.remove('bg-blue-50', 'border-l-4', 'border-primary'));
@@ -573,9 +605,15 @@
                         </div>
                         <style>.has-checked:has(:checked) { transform: scale(1.05); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }</style>
                         <input type="text" id="post-text" class="w-full p-2 mb-3 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" placeholder="コメント...">
+                        
+                        <!-- プレビュー表示エリア -->
+                        <div id="image-preview-container" class="hidden mb-3 relative group">
+                            <img id="image-preview" src="" class="w-full h-32 object-cover rounded-lg border border-slate-200">
+                            <button id="remove-image-btn" class="absolute top-1 right-1 bg-black bg-opacity-50 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-500 transition">✕</button>
+                        </div>
+
                         <div class="flex justify-between items-center">
-                            <label for="post-file-input" class="cursor-pointer text-slate-400 hover:text-primary text-xl p-2 transition" id="file-label"><i class="fas fa-camera"></i></label>
-                            <input type="file" id="post-file-input" accept="image/*" class="hidden">
+                            <button id="select-image-btn" class="text-slate-400 hover:text-primary text-xl p-2 transition"><i class="fas fa-camera"></i></button>
                             <button id="submit-post" class="bg-primary text-white text-xs font-bold py-2 px-6 rounded-full shadow-md hover:bg-blue-600 transition active:scale-95">投稿</button>
                         </div>
                     `;
@@ -584,36 +622,33 @@
 
                 setTimeout(() => {
                     if(!currentUser) return;
-                    const fileInput = document.getElementById('post-file-input');
-                    const label = document.getElementById('file-label');
-                    const btn = document.getElementById('submit-post');
+                    let selectedImageBase64 = null;
+                    const previewContainer = document.getElementById('image-preview-container');
+                    const previewImg = document.getElementById('image-preview');
                     
-                    fileInput.onchange = () => {
-                        if(fileInput.files.length > 0) {
-                            label.classList.remove('text-slate-400');
-                            label.classList.add('text-green-500');
-                        } else {
-                            label.classList.add('text-slate-400');
-                            label.classList.remove('text-green-500');
-                        }
+                    // 画像選択ボタン
+                    document.getElementById('select-image-btn').onclick = () => {
+                        selectImage((base64) => {
+                            selectedImageBase64 = base64;
+                            previewImg.src = base64;
+                            previewContainer.classList.remove('hidden');
+                            document.getElementById('select-image-btn').classList.add('text-green-500');
+                        });
                     };
 
-                    btn.onclick = () => {
+                    // 画像削除ボタン
+                    document.getElementById('remove-image-btn').onclick = () => {
+                        selectedImageBase64 = null;
+                        previewContainer.classList.add('hidden');
+                        document.getElementById('select-image-btn').classList.remove('text-green-500');
+                    };
+
+                    document.getElementById('submit-post').onclick = () => {
                         const text = document.getElementById('post-text').value;
-                        const catInput = document.querySelector('input[name="cat"]:checked');
-                        const category = catInput ? catInput.value : 'other';
+                        const category = document.querySelector('input[name="cat"]:checked').value;
                         
                         if(!text) return showToast("コメントを入力してください", 'error');
-                        
-                        const file = fileInput.files[0];
-                        if (file) {
-                            if (file.size > 800 * 1024) return showToast("画像サイズ過大", 'error');
-                            const reader = new FileReader();
-                            reader.onload = (evt) => submitPost(e.latlng, text, evt.target.result, category);
-                            reader.readAsDataURL(file);
-                        } else {
-                            submitPost(e.latlng, text, null, category);
-                        }
+                        submitPost(e.latlng, text, selectedImageBase64, category);
                     };
                 }, 100);
             });
@@ -662,11 +697,10 @@
                 const footer = document.createElement('div');
                 footer.className = 'flex items-center gap-4 mt-2';
                 
-                const likeCount = data.likedBy ? data.likedBy.length : 0;
-                const isLiked = currentUser && data.likedBy && data.likedBy.includes(currentUser.uid);
-                
                 const likeBtn = document.createElement('button');
                 likeBtn.className = 'flex items-center gap-1 text-xs text-slate-400 hover:text-pink-500 transition group/like';
+                const likeCount = data.likedBy ? data.likedBy.length : 0;
+                const isLiked = currentUser && data.likedBy && data.likedBy.includes(currentUser.uid);
                 likeBtn.innerHTML = `<i class="${isLiked ? 'fas' : 'far'} fa-heart text-sm ${isLiked ? 'text-pink-500' : ''}"></i> <span>${likeCount || ''}</span>`;
                 likeBtn.onclick = (e) => {
                     e.stopPropagation();
@@ -682,8 +716,8 @@
                 shareBtn.innerHTML = '<i class="fas fa-share-alt"></i>';
                 shareBtn.onclick = (e) => {
                     e.stopPropagation();
-                    const shareText = `「${data.text}」 #千代田区マップSNS`;
-                    if (navigator.share) navigator.share({ title: '千代田区マップ', text: shareText, url: window.location.href }).catch(()=>{});
+                    const shareText = `「${data.text}」 #千代田区マップ`;
+                    if (navigator.share) navigator.share({ title: 'マップ', text: shareText, url: window.location.href }).catch(()=>{});
                     else window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}`, '_blank');
                 };
                 footer.appendChild(shareBtn);
@@ -700,9 +734,9 @@
 
                 li.onclick = (e) => {
                     if(e.target.closest('button')) return;
-                    selectPost(docId); // サイドバークリックでピン選択と移動
+                    selectPost(docId);
                     const marker = markersMap[docId];
-                    if (marker) marker.openPopup(); // ポップアップも開く
+                    if(marker) marker.openPopup();
                 };
                 list.appendChild(li);
             }
