@@ -24,12 +24,13 @@
             display: flex; flex-direction: column; z-index: 2000;
             box-shadow: 2px 0 10px rgba(0,0,0,0.05); position: relative;
         }
-        #mapid { flex: 1; height: 100%; background-color: #f0f0f0; position: relative; }
+        #mapid { flex: 1; height: 100%; background-color: #fff; position: relative; }
 
+        /* ★修正★ スマホ用レスポンシブ (50:50) */
         @media (max-width: 600px) {
             #container { flex-direction: column; }
-            #mapid { height: 60%; width: 100%; order: 1; }
-            #sidebar { width: 100%; height: 40%; border-right: none; border-top: 1px solid #ddd; order: 2; }
+            #mapid { height: 50%; width: 100%; order: 1; }
+            #sidebar { width: 100%; height: 50%; border-right: none; border-top: 1px solid #ddd; order: 2; }
             #sidebar-toggle { display: none; }
         }
 
@@ -38,14 +39,17 @@
             display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
             position: relative; overflow: visible; width: 120px;
             filter: drop-shadow(0 2px 3px rgba(0,0,0,0.2));
+            cursor: pointer; /* クリックできる感 */
         }
 
         .marker-bubble {
             background-color: #fff; border-radius: 20px; padding: 6px 12px;
             font-size: 12px; font-weight: bold; color: #444; white-space: nowrap;
-            margin-bottom: 8px; max-width: 150px; overflow: hidden; text-overflow: ellipsis;
-            position: relative; text-align: center; border: 1px solid #eee; overflow: visible !important;
+            margin-bottom: 8px; max-width: 150px; overflow: visible !important;
+            text-overflow: ellipsis; position: relative; text-align: center; border: 1px solid #eee;
         }
+        .marker-content { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+        
         .marker-bubble::after {
             content: ''; position: absolute; bottom: -6px; left: 50%; margin-left: -6px;
             border-width: 6px 6px 0; border-style: solid;
@@ -59,11 +63,11 @@
         .marker-circle.has-image { width: 40px; height: 40px; border: 3px solid white; background-color: #fff; }
         .marker-circle.no-image { width: 18px; height: 18px; border: 2px solid white; }
 
-        /* --- カテゴリ別の色設定 --- */
-        .category-gourmet .marker-circle.no-image { background-color: #ff9800; } /* オレンジ */
-        .category-view .marker-circle.no-image { background-color: #4caf50; }    /* 緑 */
-        .category-event .marker-circle.no-image { background-color: #9c27b0; }   /* 紫 */
-        .category-other .marker-circle.no-image { background-color: #007bff; }   /* 青 */
+        /* カテゴリ色 */
+        .category-gourmet .marker-circle.no-image { background-color: #ff9800; }
+        .category-view .marker-circle.no-image { background-color: #4caf50; }
+        .category-event .marker-circle.no-image { background-color: #9c27b0; }
+        .category-other .marker-circle.no-image { background-color: #007bff; }
 
         .category-gourmet .marker-bubble { border-bottom: 2px solid #ff9800; }
         .category-view .marker-bubble { border-bottom: 2px solid #4caf50; }
@@ -104,14 +108,13 @@
 
         #filter-section { padding: 10px 15px; border-bottom: 1px solid #eee; background: #fcfcfc; display: flex; gap: 10px; align-items: center; }
         .sort-select { padding: 5px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; background: #fff; flex: 1; }
-        #sidebar-content { flex: 1; overflow-y: auto; padding: 0; }
+        #sidebar-content { flex: 1; overflow-y: auto; padding: 0; scroll-behavior: smooth; }
 
         #comment-list { list-style: none; padding: 0; margin: 0; }
         .comment-item { display: flex; align-items: flex-start; padding: 12px 15px; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: all 0.2s; border-left: 4px solid transparent; }
         .comment-item:hover { background-color: #fafafa; }
-        .comment-item.active { background-color: #fdfdfd; border-left-color: #007bff; }
+        .comment-item.active { background-color: #f0f8ff; border-left-color: #007bff; }
         
-        /* リストのカテゴリ色バー */
         .comment-item.cat-gourmet { border-left-color: #ff9800; }
         .comment-item.cat-view { border-left-color: #4caf50; }
         .comment-item.cat-event { border-left-color: #9c27b0; }
@@ -122,34 +125,33 @@
         .item-author { font-weight: bold; font-size: 13px; color: #333; }
         .item-time { font-size: 11px; color: #999; }
         .item-text { font-size: 13px; color: #444; line-height: 1.4; word-wrap: break-word; }
-        .item-footer { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
-        .item-like-btn { background: none; border: none; cursor: pointer; color: #ccc; font-size: 13px; padding: 2px 5px; display: flex; align-items: center; gap: 4px; transition: color 0.2s; }
-        .item-like-btn:hover { color: #ff4081; }
+        .item-footer { display: flex; align-items: center; gap: 12px; margin-top: 6px; }
+        
+        .item-btn { background: none; border: none; cursor: pointer; color: #ccc; font-size: 13px; padding: 2px; display: flex; align-items: center; gap: 4px; transition: color 0.2s; }
+        .item-btn:hover { color: #555; }
+        
         .item-like-btn.liked { color: #ff4081; }
-        .item-delete-btn { color: #ccc; cursor: pointer; font-size: 12px; display: none; }
+        .item-like-btn:hover { color: #ff4081; }
+        .item-share-btn:hover { color: #007bff; }
+        
+        .item-delete-btn { color: #ccc; display: none; }
         .item-delete-btn:hover { color: #ff4444; }
         .my-post .item-delete-btn { display: inline-block; }
+        
         .item-right-img { width: 60px; height: 60px; border-radius: 6px; object-fit: cover; border: 1px solid #eee; background: #f9f9f9; flex-shrink: 0; }
+        
         .hashtag { color: #007bff; margin-right: 2px; }
-
-        /* --- 投稿フォーム --- */
-        .comment-form { text-align: center; width: 260px; padding: 5px; }
+        .comment-form { text-align: center; width: 240px; padding: 5px; }
         .form-header { font-size: 12px; color: #666; margin-bottom: 8px; text-align: left; }
         .comment-input { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
-        
-        /* カテゴリ選択ボタン */
         .category-selector { display: flex; justify-content: space-between; margin-bottom: 15px; }
         .cat-radio { display: none; }
-        .cat-label { 
-            font-size: 20px; padding: 5px 10px; cursor: pointer; border-radius: 50%; border: 2px solid transparent; transition: all 0.2s; opacity: 0.6; grayscale: 100%;
-        }
+        .cat-label { font-size: 20px; padding: 5px 10px; cursor: pointer; border-radius: 50%; border: 2px solid transparent; transition: all 0.2s; opacity: 0.6; grayscale: 100%; }
         .cat-label:hover { opacity: 1; }
         .cat-radio:checked + .cat-label { opacity: 1; transform: scale(1.2); border-color: #007bff; background: #eef6ff; }
-        /* カテゴリごとの選択色 */
         #cat-gourmet:checked + .cat-label { border-color: #ff9800; background: #fff3e0; }
         #cat-view:checked + .cat-label { border-color: #4caf50; background: #e8f5e9; }
         #cat-event:checked + .cat-label { border-color: #9c27b0; background: #f3e5f5; }
-
         .form-actions { display: flex; justify-content: space-between; align-items: center; }
         .image-upload-label { cursor: pointer; color: #007bff; font-size: 20px; padding: 5px; transition: color 0.2s; }
         .image-upload-label.has-file { color: #28a745; }
@@ -157,13 +159,7 @@
         .comment-btn { padding: 8px 20px; background: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 13px; }
         .loader { border: 3px solid #f3f3f3; border-top: 3px solid #007bff; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; margin: 20px auto; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        /* --- トースト通知 --- */
-        #toast {
-            visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 12px;
-            position: fixed; z-index: 10000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s;
-        }
+        #toast { visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 4px; padding: 12px; position: fixed; z-index: 10000; left: 50%; bottom: 30px; transform: translateX(-50%); font-size: 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: opacity 0.3s, bottom 0.3s; }
         #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
         #toast.success { background-color: #28a745; }
         #toast.error { background-color: #dc3545; }
@@ -173,7 +169,6 @@
 
     <div id="container">
         <div id="sidebar">
-            <!-- ログインエリア -->
             <div id="login-section">
                 <button id="login-btn" class="auth-btn btn-login">Googleでログイン</button>
                 <div id="user-info">
@@ -189,8 +184,6 @@
                     <button id="logout-btn" class="auth-btn btn-logout">ログアウト</button>
                 </div>
             </div>
-
-            <!-- フィルタ・ソート -->
             <div id="filter-section">
                 <select id="sort-select" class="sort-select">
                     <option value="newest">🕒 新着順</option>
@@ -198,7 +191,6 @@
                 </select>
                 <div style="font-size: 10px; color: #adb5bd; margin-left: 10px; font-weight: 500;">※2時間以内を表示</div>
             </div>
-
             <div id="sidebar-content">
                 <ul id="comment-list"><div id="loading-spinner" class="loader"></div></ul>
             </div>
@@ -209,10 +201,8 @@
         </div>
     </div>
 
-    <!-- トースト通知用 -->
     <div id="toast"></div>
 
-    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
@@ -232,14 +222,11 @@
         const auth = firebase.auth();
         const provider = new firebase.auth.GoogleAuthProvider();
 
-        // トースト表示関数
         function showToast(message, type = 'normal') {
             const toast = document.getElementById("toast");
             toast.innerText = message;
-            toast.className = "show";
-            if (type === 'success') toast.classList.add("success");
-            if (type === 'error') toast.classList.add("error");
-            setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+            toast.className = "show " + type;
+            setTimeout(() => toast.className = toast.className.replace("show", ""), 3000);
         }
 
         function toggleSidebar() {
@@ -256,21 +243,7 @@
             var center = [35.685175, 139.752762];
             var map = L.map('mapid', { zoomControl: false }).setView(center, 14);
             L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-            // --- 地図レイヤー切り替え ---
-            var standard = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' });
-            var dark = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, attribution: '© CartoDB' });
-            var satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: '© Esri' });
-
-            standard.addTo(map); // 初期表示
-
-            // レイヤーコントロールの追加（右上）
-            var baseMaps = {
-                "標準": standard,
-                "ダーク": dark,
-                "航空写真": satellite
-            };
-            L.control.layers(baseMaps).addTo(map);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap', className: '' }).addTo(map);
 
             var markersMap = {};
             var currentPostsData = []; 
@@ -278,6 +251,7 @@
             var currentUser = null;
             var userProfile = { name: "", photo: "" };
             var unsubscribe = null;
+            var selectedDocId = null;
 
             document.getElementById('login-btn').onclick = () => auth.signInWithPopup(provider).catch(e => showToast(e.message, 'error'));
             document.getElementById('logout-btn').onclick = () => auth.signOut().then(() => showToast("ログアウトしました"));
@@ -365,6 +339,41 @@
                 });
             }
 
+            // 🌟 投稿を選択する処理（共通化）
+            function selectPost(docId) {
+                selectedDocId = docId;
+                
+                // 1. ピンの強調
+                Object.keys(markersMap).forEach(id => {
+                    const marker = markersMap[id];
+                    const elem = marker.getElement();
+                    if (elem) {
+                        if (id === docId) {
+                            elem.classList.add('highlight-pin');
+                            marker.setZIndexOffset(100000);
+                        } else {
+                            elem.classList.remove('highlight-pin');
+                            const data = currentPostsData.find(p => p.id === id);
+                            const likeCount = data && data.likedBy ? data.likedBy.length : 0;
+                            marker.setZIndexOffset(likeCount * 100);
+                        }
+                    }
+                });
+
+                // 2. リストのスクロールと強調
+                const listItem = document.getElementById('post-' + docId);
+                if (listItem) {
+                    document.querySelectorAll('.comment-item').forEach(el => el.classList.remove('active'));
+                    listItem.classList.add('active');
+                    listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                // 3. 地図移動
+                if (markersMap[docId]) {
+                    map.panTo(markersMap[docId].getLatLng());
+                }
+            }
+
             function refreshUI() {
                 const sortMode = document.getElementById('sort-select').value;
                 const list = document.getElementById('comment-list');
@@ -393,17 +402,34 @@
                     const docId = data.id;
                     const likeCount = data.likedBy ? data.likedBy.length : 0;
 
+                    // マーカー処理
                     if (!markersMap[docId]) {
                         const icon = createCustomIcon(data.text, data.image, data.category);
                         const marker = L.marker([data.lat, data.lng], { icon: icon }).addTo(map);
-                        marker.setZIndexOffset(likeCount * 100); 
+                        
+                        // マーカークリック時のイベント (追加)
+                        marker.on('click', (e) => {
+                            L.DomEvent.stopPropagation(e);
+                            selectPost(docId);
+                        });
+
                         markersMap[docId] = marker;
                     } else {
                         const marker = markersMap[docId];
                         marker.setIcon(createCustomIcon(data.text, data.image, data.category));
-                        marker.setZIndexOffset(likeCount * 100);
                     }
-                    addSidebarItem(docId, data, markersMap[docId]);
+
+                    // Z-index更新
+                    const marker = markersMap[docId];
+                    if (docId === selectedDocId) {
+                        marker.setZIndexOffset(100000);
+                        setTimeout(() => { if(marker.getElement()) marker.getElement().classList.add('highlight-pin'); }, 0);
+                    } else {
+                        marker.setZIndexOffset(likeCount * 100);
+                        if(marker.getElement()) marker.getElement().classList.remove('highlight-pin');
+                    }
+
+                    addSidebarItem(docId, data);
                 });
             }
 
@@ -411,6 +437,12 @@
 
             map.on('click', function(e) {
                 if(e.originalEvent.target.closest('button')) return;
+                
+                // 選択解除
+                selectedDocId = null;
+                document.querySelectorAll('.highlight-pin').forEach(el => el.classList.remove('highlight-pin'));
+                document.querySelectorAll('.comment-item').forEach(el => el.classList.remove('active'));
+                
                 const container = document.createElement('div');
                 container.className = 'comment-form';
                 
@@ -419,17 +451,13 @@
                 } else {
                     container.innerHTML = `
                         <div class="form-header"><b>${userProfile.name}</b> として投稿</div>
-                        <!-- カテゴリ選択 -->
                         <div class="category-selector">
                             <input type="radio" name="cat" id="cat-gourmet" value="gourmet" class="cat-radio">
                             <label for="cat-gourmet" class="cat-label" title="グルメ">🍴</label>
-                            
                             <input type="radio" name="cat" id="cat-view" value="view" class="cat-radio">
                             <label for="cat-view" class="cat-label" title="風景">🗻</label>
-                            
                             <input type="radio" name="cat" id="cat-event" value="event" class="cat-radio">
                             <label for="cat-event" class="cat-label" title="イベント">🎉</label>
-                            
                             <input type="radio" name="cat" id="cat-other" value="other" class="cat-radio" checked>
                             <label for="cat-other" class="cat-label" title="その他">💬</label>
                         </div>
@@ -456,7 +484,7 @@
 
                     btn.onclick = () => {
                         const text = document.getElementById('post-text').value;
-                        const category = document.querySelector('input[name="cat"]:checked').value; // カテゴリ取得
+                        const category = document.querySelector('input[name="cat"]:checked').value;
                         if(!text) return showToast("コメントを入力してください", 'error');
                         
                         const file = fileInput.files[0];
@@ -483,11 +511,13 @@
                 }).catch(e => showToast(e.message, 'error'));
             }
 
-            function addSidebarItem(docId, data, marker) {
+            function addSidebarItem(docId, data) {
                 const list = document.getElementById('comment-list');
                 const li = document.createElement('li');
                 li.className = 'comment-item';
-                // カテゴリクラス付与
+                li.id = 'post-' + docId; // ID付与
+                
+                if (docId === selectedDocId) li.classList.add('active');
                 if (data.category) li.classList.add('cat-' + data.category);
                 if (currentUser && data.uid === currentUser.uid) li.classList.add('my-post');
 
@@ -514,7 +544,7 @@
                 footer.className = 'item-footer';
                 
                 const likeBtn = document.createElement('button');
-                likeBtn.className = 'item-like-btn';
+                likeBtn.className = 'item-btn item-like-btn';
                 const likeCount = data.likedBy ? data.likedBy.length : 0;
                 const isLiked = currentUser && data.likedBy && data.likedBy.includes(currentUser.uid);
                 
@@ -533,16 +563,38 @@
                 };
                 footer.appendChild(likeBtn);
 
-                const delBtn = document.createElement('i');
-                delBtn.className = 'fas fa-trash item-delete-btn';
+                // ★ シェアボタン追加
+                const shareBtn = document.createElement('button');
+                shareBtn.className = 'item-btn item-share-btn';
+                shareBtn.innerHTML = '<i class="fas fa-share-alt"></i>';
+                shareBtn.title = "シェア";
+                shareBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const shareUrl = window.location.href.split('?')[0]; // クエリ削除
+                    const shareText = `「${data.text}」\n#千代田区マップSNS`;
+                    
+                    if (navigator.share) {
+                        navigator.share({ title: '千代田区コメントマップ', text: shareText, url: shareUrl })
+                        .catch(console.error);
+                    } else {
+                        // Twitterフォールバック
+                        const twUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+                        window.open(twUrl, '_blank');
+                    }
+                };
+                footer.appendChild(shareBtn);
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'item-btn item-delete-btn';
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
                 delBtn.onclick = (e) => {
                     e.stopPropagation();
                     if(confirm("削除しますか？")) {
-                        li.remove(); map.removeLayer(marker);
                         db.collection("posts").doc(docId).delete().then(()=>showToast("削除しました"));
                     }
                 };
                 footer.appendChild(delBtn);
+                
                 body.appendChild(footer);
                 li.appendChild(body);
 
@@ -554,12 +606,8 @@
                 }
 
                 li.onclick = (e) => {
-                    if(e.target.closest('button') || e.target.closest('i')) return;
-                    document.querySelectorAll('.highlight-pin').forEach(el => el.classList.remove('highlight-pin'));
-                    if(marker.getElement()) marker.getElement().classList.add('highlight-pin');
-                    document.querySelectorAll('.comment-item').forEach(el => el.classList.remove('active'));
-                    li.classList.add('active');
-                    map.panTo(marker.getLatLng());
+                    if(e.target.closest('button')) return;
+                    selectPost(docId);
                 };
                 list.appendChild(li);
             }
@@ -569,7 +617,6 @@
                 
                 let circleClass = 'marker-circle';
                 let circleStyle = '';
-                // カテゴリクラスを親に追加するために記憶
                 const catClass = category ? 'category-' + category : 'category-other';
 
                 if (image) {
@@ -587,12 +634,7 @@
                         <div class="${circleClass}" style="${circleStyle}"></div>
                     </div>`;
                 
-                return L.divIcon({
-                    html: html,
-                    className: '', 
-                    iconSize: [120, 70], 
-                    iconAnchor: [60, 65]
-                });
+                return L.divIcon({ html: html, className: '', iconSize: [120, 70], iconAnchor: [60, 65] });
             }
 
             function formatTextWithHashtags(text) { 
